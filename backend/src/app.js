@@ -8,6 +8,7 @@ import organisationsRouter from './routes/organisations.js';
 import cohortsRouter from './routes/cohorts.js';
 import sessionsRouter from './routes/sessions.js';
 import rubricsRouter from './routes/rubrics.js';
+import reportsRouter from './routes/reports.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // Express app, no listener — imported by server.js (runtime) and tests (supertest).
@@ -33,6 +34,7 @@ export function createApp() {
   app.use('/api/rubrics', rubricsRouter);
   app.use('/api', cohortsRouter);
   app.use('/api', sessionsRouter);
+  app.use('/api', reportsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

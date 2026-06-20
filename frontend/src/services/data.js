@@ -97,6 +97,12 @@ export const SCORE_STATES = {
   disputed: { label: 'Disputed', cls: 'bg-rose-50 text-rose-700' },
 };
 
+export const reportsApi = {
+  forLearner(learnerId) {
+    return api.get(`/learners/${learnerId}/report`);
+  },
+};
+
 export const ROLES = ['team_lead', 'airway_manager', 'compressor', 'documentation'];
 
 // Minimal CSV parser: header row + comma-separated values.

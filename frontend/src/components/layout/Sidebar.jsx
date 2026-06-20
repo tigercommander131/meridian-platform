@@ -17,7 +17,7 @@ const nav = [
   { href: '/students', label: 'Students', icon: 'students', ready: true },
   { href: '/cohorts', label: 'Cohorts', icon: 'cohorts', ready: true },
   { href: '/sessions', label: 'Sessions', icon: 'sessions', ready: true },
-  { href: '/reports', label: 'Reports', icon: 'reports', ready: false },
+  { href: '/reports', label: 'Reports', icon: 'reports', ready: true },
 ];
 
 function Icon({ d }) {
