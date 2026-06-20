@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
-import { login, register, refresh, logout, verify } from '../controllers/authController.js';
+import { login, register, studentRegister, refresh, logout, verify } from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
 import { config } from '../config/environment.js';
 
@@ -22,6 +22,7 @@ const registerLimiter = rateLimit({
 
 router.post('/login', loginLimiter, login);
 router.post('/register', registerLimiter, register);
+router.post('/student/register', registerLimiter, studentRegister);
 router.post('/refresh', refresh);
 router.post('/logout', authenticate, logout);
 router.post('/verify', authenticate, verify);

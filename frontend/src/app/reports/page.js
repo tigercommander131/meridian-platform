@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AppShell from '@/components/layout/AppShell';
-import { learnersApi, reportsApi } from '@/services/data';
+import { learnersApi, reportsApi, certificatesApi } from '@/services/data';
 import { downloadReportPdf } from '@/utils/reportPdf';
 import { toast } from '@/stores/toastStore';
 
@@ -19,6 +19,19 @@ function ReportsContent() {
   const [learnerId, setLearnerId] = useState('');
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [issuing, setIssuing] = useState(false);
+
+  async function issueCert() {
+    setIssuing(true);
+    try {
+      await certificatesApi.issue(report.learner.id, {});
+      toast.success(`Certificate issued to ${report.learner.name} — they can download it in their portal`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setIssuing(false);
+    }
+  }
 
   useEffect(() => {
     learnersApi.list({ limit: 200 }).then((res) => {
@@ -55,6 +68,12 @@ function ReportsContent() {
           <button onClick={() => downloadReportPdf(report)}
             className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:bg-neutral-700">
             Download PDF
+          </button>
+        )}
+        {report && (
+          <button onClick={issueCert} disabled={issuing}
+            className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50">
+            {issuing ? 'Issuing…' : 'Issue certificate'}
           </button>
         )}
       </div>

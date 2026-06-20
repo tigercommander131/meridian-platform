@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useRealtime } from '@/hooks/useRealtime';
@@ -23,13 +23,15 @@ export default function AppShell({ children }) {
   // Open the live connection for the whole authenticated app.
   useRealtime();
 
-  // Redirect once auth state is resolved.
-  if (!isLoading && !isAuthenticated) {
-    if (typeof window !== 'undefined') router.replace('/login');
-    return null;
-  }
+  // Redirect once auth state is resolved: unauthenticated → login, students →
+  // their portal. Done in an effect so we never call router during render.
+  useEffect(() => {
+    if (isLoading) return;
+    if (!isAuthenticated) router.replace('/login');
+    else if (user?.kind === 'student') router.replace('/portal');
+  }, [isLoading, isAuthenticated, user, router]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || !isAuthenticated || user.kind === 'student') {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
         Loading…

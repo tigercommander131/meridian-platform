@@ -8,16 +8,18 @@ import AuthLayout, { Field } from '@/components/auth/AuthLayout';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, user, login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Already logged in → skip the form.
+  const homeFor = (u) => (u?.kind === 'student' ? '/portal' : '/dashboard');
+
+  // Already logged in → skip the form (route by account type).
   useEffect(() => {
-    if (isAuthenticated) router.replace('/dashboard');
-  }, [isAuthenticated, router]);
+    if (isAuthenticated) router.replace(homeFor(user));
+  }, [isAuthenticated, user, router]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -28,8 +30,8 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      await login(username, password);
-      router.push('/dashboard');
+      const u = await login(username, password);
+      router.push(homeFor(u));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -41,7 +43,12 @@ export default function LoginPage() {
     <AuthLayout
       title="Welcome back"
       subtitle="Sign in to your training workspace"
-      footer={<>New here? <Link href="/signup" className="font-medium text-teal-700 hover:underline">Create an account</Link></>}
+      footer={
+        <div className="space-y-1">
+          <p>New organisation? <Link href="/signup" className="font-medium text-teal-700 hover:underline">Create an account</Link></p>
+          <p>Student? <Link href="/claim" className="font-medium text-teal-700 hover:underline">Set up your student login</Link></p>
+        </div>
+      }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field

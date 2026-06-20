@@ -144,6 +144,35 @@ export const exportsApi = {
   },
 };
 
+// Student portal (student token).
+export const studentApi = {
+  sessions() {
+    return api.get('/student/me/sessions');
+  },
+  checkin(sessionId) {
+    return api.post(`/student/sessions/${sessionId}/checkin`, {});
+  },
+  results() {
+    return api.get('/student/me/results');
+  },
+  certificates() {
+    return api.get('/student/me/certificates');
+  },
+};
+
+// Certificates — staff issue/list + public verification.
+export const certificatesApi = {
+  issue(learnerId, payload) {
+    return api.post(`/learners/${learnerId}/certificates`, payload);
+  },
+  listForLearner(learnerId) {
+    return api.get(`/learners/${learnerId}/certificates`);
+  },
+  verify(code) {
+    return api.get(`/verify/${code}`);
+  },
+};
+
 export const ROLES = ['team_lead', 'airway_manager', 'compressor', 'documentation'];
 
 // Minimal CSV parser: header row + comma-separated values.

@@ -20,7 +20,7 @@ verified end-to-end (API + browser); production Docker image boots, migrates,
 and serves.
 
 ## Tests
-- Backend: `cd backend && npm test` — **52 passing** (auth 9 + sync 5 + realtime 2 + learners 6 + cohorts 5 + sessions/scoring 7 + approval 6 + reports 2 + exports 3 + courses 7). Needs Postgres running.
+- Backend: `cd backend && npm test` — **65 passing** (auth 9 + sync 5 + realtime 2 + learners 6 + cohorts 5 + sessions/scoring 7 + approval 6 + reports 2 + exports 3 + courses 7 + students/certs 8). Needs Postgres running.
 - Frontend: `cd frontend && npm test` — **7 passing** (login 2 + parseCsv 3 + ScoresPanel 2).
 
 ## Routes (live)
@@ -34,9 +34,13 @@ and serves.
 - Scoring `GET .../participants/:pid/scoring-context`, `POST .../rubric-scores`, `GET /api/sessions/:id/rubric-scores`, `GET /api/rubrics/:id`
 - Approval `GET /api/rubric-scores/:id`, `PUT .../approve|release|dispute|reopen` (educator/admin; dispute open)
 - Reports `GET /api/learners/:id/report` (released scores aggregate)
+- **Student portal** (student token) `GET /api/student/me/sessions|results|certificates`, `POST /api/student/sessions/:id/checkin`
+- **Certificates** `POST/GET /api/learners/:id/certificates` (staff educator/admin) · `GET /api/verify/:code` (PUBLIC)
+- **Student auth** `POST /api/auth/student/register` (claim by enrolled email); unified `/login` detects staff vs student via JWT `kind`. `authenticate` rejects student tokens (fences the whole staff app); `authenticateStudent` guards student routes.
 - Exports `GET /api/cohorts/:id/exports/scores.csv`, `.../flight-recorder.csv`, `GET .../exports` (history), `GET .../audit`
 - Sync override: `POST /api/sync` events accept `resolution:'override'` to force a finalized score
-- Frontend pages: `/dashboard` `/students` `/courses` `/cohorts` `/cohorts/[id]` `/sessions` `/sessions/[id]` `/scoring/[sessionId]/[participantId]` `/reports` `/users` (all nav active). `/courses` → "Manage cohorts" deep-links `/cohorts?course=<id>`.
+- Staff pages: `/dashboard` `/students` `/courses` `/cohorts` `/cohorts/[id]` `/sessions` `/sessions/[id]` `/scoring/[sessionId]/[participantId]` `/reports` `/users`. `/courses` → "Manage cohorts" deep-links `/cohorts?course=<id>`. Reports has an "Issue certificate" action.
+- Student/public pages: `/claim` (student self-register), `/portal` (timetable + self check-in), `/portal/results`, `/portal/certificates` (PDF via jsPDF), `/verify/[code]` (public cert verification). Login auto-routes by account kind; AppShell/StudentShell fence staff vs students both ways.
 
 ## Database
 - PostgreSQL 14 in Docker container `parasol-postgres` (port 5432).

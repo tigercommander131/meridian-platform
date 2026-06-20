@@ -118,6 +118,12 @@ export const auth = {
     setSession(data);
     return data.user;
   },
+  // Student self-registration: claim a learner account by email.
+  async studentRegister(email, password) {
+    const data = await request('/auth/student/register', { method: 'POST', body: { email, password } });
+    setSession(data);
+    return data.user;
+  },
   logout() {
     clearToken();
   },
