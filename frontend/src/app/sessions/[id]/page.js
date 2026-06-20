@@ -93,20 +93,6 @@ function SessionDetail() {
                   </select>
                 </td>
                 <td className="px-4 py-2 text-right">
-                  <button
-                    onClick={() => act(
-                      () => sessionsApi.ingestEvent(id, {
-                        participantId: p.id,
-                        eventType: 'compression_detected',
-                        parameters: { compressionDepthMM: 52, rateBPM: 108, timeToFirstCompression: 11 },
-                      }),
-                      'Demo evidence added'
-                    )}
-                    className="mr-2 text-xs text-neutral-400 hover:text-neutral-600"
-                    title="Simulate flight-recorder data (no real simulator attached)"
-                  >
-                    + evidence
-                  </button>
                   <Link href={`/scoring/${id}/${p.id}`}
                     className="rounded-md bg-neutral-900 px-2.5 py-1 text-xs font-medium text-white hover:bg-neutral-700">
                     Score

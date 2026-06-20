@@ -73,10 +73,6 @@ export default function LoginPage() {
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-
-      <p className="mt-4 text-center text-xs text-neutral-400">
-        Demo: instructor@parasol.edu.au / password
-      </p>
     </AuthLayout>
   );
 }
