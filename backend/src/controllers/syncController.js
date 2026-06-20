@@ -1,4 +1,5 @@
 import { getPool, query } from '../config/database.js';
+import { broadcast } from '../realtime.js';
 
 // Apply one offline event inside a transaction. Returns a per-event result.
 async function applyEvent(client, event, user) {
@@ -114,6 +115,16 @@ export async function sync(req, res, next) {
       } finally {
         client.release();
       }
+    }
+
+    // Notify connected clients about what just landed, so other instructors'
+    // screens update live (e.g. a score or check-in done elsewhere).
+    if (synced > 0) {
+      broadcast('events.synced', {
+        count: synced,
+        types: results.filter((r) => r.status === 'synced').map((r) => r.eventId),
+        by: req.user.email || req.user.sub,
+      });
     }
 
     res.json({ synced, failed, conflicts, events: results });

@@ -3,8 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useRealtime } from '@/hooks/useRealtime';
 import Header from './Header';
 import Sidebar from './Sidebar';
+import ToastContainer from '@/components/shared/Toast';
+import ErrorBoundary from '@/components/shared/ErrorBoundary';
 
 /**
  * Authenticated app frame. Guards the route (redirects to /login when not
@@ -14,6 +17,9 @@ export default function AppShell({ children }) {
   const router = useRouter();
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Open the live connection for the whole authenticated app.
+  useRealtime();
 
   // Redirect once auth state is resolved.
   if (!isLoading && !isAuthenticated) {
@@ -54,9 +60,13 @@ export default function AppShell({ children }) {
         )}
 
         <main className="min-w-0 flex-1 px-6 py-8">
-          <div className="mx-auto max-w-5xl">{children}</div>
+          <div className="mx-auto max-w-5xl">
+            <ErrorBoundary>{children}</ErrorBoundary>
+          </div>
         </main>
       </div>
+
+      <ToastContainer />
     </div>
   );
 }

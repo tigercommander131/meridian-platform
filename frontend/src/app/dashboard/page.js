@@ -5,6 +5,44 @@ import AppShell from '@/components/layout/AppShell';
 import { useAuth } from '@/hooks/useAuth';
 import { usePersist } from '@/hooks/usePersist';
 import { useSync } from '@/hooks/useSync';
+import { useRealtimeStore } from '@/stores/realtimeStore';
+import { toast } from '@/stores/toastStore';
+
+function LiveActivity() {
+  const { connection, events } = useRealtimeStore();
+  const dot =
+    connection === 'connected' ? 'bg-teal-500' : connection === 'connecting' ? 'bg-amber-400' : 'bg-neutral-300';
+
+  return (
+    <div className="mt-6 rounded-lg border border-neutral-200 bg-white p-5">
+      <div className="flex items-center gap-2">
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        <p className="text-sm font-medium text-neutral-700">Live activity</p>
+        <span className="text-xs text-neutral-400">({connection})</span>
+      </div>
+      {events.length === 0 ? (
+        <p className="mt-2 text-xs text-neutral-500">
+          No live events yet. Sync from another window to see updates appear here in real time.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-1.5">
+          {events.map((e) => (
+            <li key={e.id} className="flex items-center justify-between text-xs">
+              <span className="text-neutral-700">
+                {e.type === 'events.synced'
+                  ? `${e.payload?.count} event(s) synced by ${e.payload?.by}`
+                  : e.type}
+              </span>
+              <span className="text-neutral-400">
+                {new Date(e.timestamp).toLocaleTimeString()}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const STATUS_LABEL = {
   idle: 'Idle',
@@ -21,7 +59,14 @@ function SyncPanel() {
   async function handleSync() {
     setBusy(true);
     try {
-      await sync();
+      const result = await sync();
+      if (result?.conflicts?.length > 0) {
+        toast.error(`${result.conflicts.length} conflict(s) need manual review`);
+      } else if (result?.synced > 0) {
+        toast.success(`Synced ${result.synced} event(s) to the cloud`);
+      }
+    } catch {
+      toast.error('Sync failed — will retry automatically');
     } finally {
       setBusy(false);
     }
@@ -128,9 +173,10 @@ function DashboardContent() {
 
       <OfflineSelfTest />
       <SyncPanel />
+      <LiveActivity />
 
       <p className="mt-8 text-xs text-neutral-400">
-        Week 3 — offline→cloud sync. Course data wires up in Week 5.
+        Week 4 — real-time + error handling. Course data wires up in Week 5.
       </p>
     </>
   );

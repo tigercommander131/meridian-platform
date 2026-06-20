@@ -2,12 +2,12 @@
 
 **Last updated:** 2026-06-20 (Week 1, Day 1-3 done)
 
-## Status: Week 3 COMPLETE + verified
+## Status: Week 4 COMPLETE + verified
 
-Weeks 1-3 done: scaffold + DB + auth + offline storage + auth state/app shell + **offline→cloud sync engine**. All working, tests green, verified in browser.
+Weeks 1-4 done: scaffold + DB + auth + offline storage + auth state/app shell + offline→cloud sync + **real-time (WebSocket) + error handling**. All working, tests green, verified in browser.
 
 ## Tests
-- Backend: `cd backend && npm test` — **13 passing** (auth 9 + sync 4: idempotency, conflict). Needs Postgres running.
+- Backend: `cd backend && npm test` — **15 passing** (auth 9 + sync 4 + realtime 2). Needs Postgres running.
 - Frontend: `cd frontend && npm test` — 2 passing (Jest+RTL: login renders, validation).
 
 ## Database
@@ -96,6 +96,16 @@ Dev login: `instructor@parasol.edu.au` / `password`
 
 **VERIFIED (Week 3):** Browser — leftover queued event auto-drained on mount (reached Postgres, `synced_events`=2); clicked self-test → "1 queued" → "Sync now" → "All synced", second Offline learner landed in DB (count 1→2). Backend 13/13.
 
+**Week 4 (real-time + error handling):**
+- Backend `realtime.js` — `ws` server on `/ws` (same port 3001), `broadcast(type, payload)`, client tracking + disconnect cleanup. `server.js` now wraps app in `http.Server` + `initRealtime`. Kept separate from app.js to avoid import cycle.
+- `syncController` broadcasts `events.synced` after a successful drain → other clients update live.
+- Frontend `services/realtime.js` — WS client with exponential-backoff auto-reconnect (resets on open, max 30s), graceful (never throws). `stores/realtimeStore.js` + `hooks/useRealtime.js` (mounted once in AppShell).
+- Dashboard `LiveActivity` panel — connection dot + live event feed.
+- `stores/toastStore.js` + `components/shared/Toast.jsx` (auto-dismiss) + `components/shared/ErrorBoundary.jsx`. AppShell renders ToastContainer + wraps children in ErrorBoundary. Sync success/conflict/failure raise toasts.
+- Backend tests `realtime.test.js` (2): connect handshake + broadcast relay.
+
+**VERIFIED (Week 4):** Browser dashboard showed Live activity "(connected)"; POSTed a sync as a second client via PowerShell → browser's Live activity updated live to "1 event(s) synced by instructor@parasol.edu.au" with no refresh. Backend 15/15, frontend 2/2.
+
 ## VERIFIED
 - GET /api/health → 200
 - DB login good creds → JWT + user pulled from Postgres (Sarah Johnson / educator,observer).
@@ -103,12 +113,13 @@ Dev login: `instructor@parasol.edu.au` / `password`
 - Browser (Day 1): login form → dashboard.
 - DB: 15 tables, seeded rows confirmed (1 user, 2 learners, 2 sites, 1 rubric, 3 criteria).
 
-## PENDING (next — Week 4)
-- **Week 4: real-time + error handling** — WebSocket server (broadcast events to connected clients, e.g. another instructor's check-in/score), auto-reconnect, polling fallback; toast notifications + error boundary; network status indicator (partly done via sync badge).
-- Conflict *resolution* UI (currently conflicts are surfaced, not resolvable) — Week 4+.
+## PENDING (next — Week 5)
+- **Week 5: student management** — CSV import + manual entry UI; backend `POST/GET /organisations/{org}/learners` (single + batch, validation, dedupe, pagination); make the Students page real (currently "Soon").
+- This is the first feature week — wires real data into the UI (dashboard stat cards, Students list).
+- Conflict *resolution* UI (conflicts surfaced, not yet resolvable).
+- WebSocket polling fallback not implemented (reconnect works; long-poll fallback deferred).
 - E2E tests (Playwright) — not started.
 - Harden `cryptography.js` passphrase (see SECURITY follow-up above).
-- Wire frontend to show real data (needs cohort/learner GET endpoints — Week 5).
 - **De-branding follow-up (optional):** repo name is neutral, but code still contains "PARASOL EMT" (login page title, seed data, db name `parasol_ems`, container `parasol-postgres`). Private repo mitigates. Full scrub = rename db/container + replace UI/seed strings if they ever want zero references.
 
 ## BUGS
