@@ -1,12 +1,25 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
+import StatCard from '@/components/ui/StatCard';
 import { useAuth } from '@/hooks/useAuth';
 import { useSync } from '@/hooks/useSync';
 import { useRealtimeStore } from '@/stores/realtimeStore';
 import { toast } from '@/stores/toastStore';
 import { coursesApi, learnersApi } from '@/services/data';
+
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+const QUICK_ACTIONS = [
+  { href: '/students', label: 'Add students', desc: 'Import or enrol learners', icon: 'M16 11a4 4 0 10-8 0 4 4 0 008 0zM4 20a8 8 0 0116 0' },
+  { href: '/sessions', label: 'Run a session', desc: 'Check in, score a simulation', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { href: '/reports', label: 'View reports', desc: 'Released results + PDF export', icon: 'M9 17v-6h6v6M4 4h16v16H4z' },
+];
 
 function LiveActivity() {
   const { connection, events } = useRealtimeStore();
@@ -14,7 +27,7 @@ function LiveActivity() {
     connection === 'connected' ? 'bg-teal-500' : connection === 'connecting' ? 'bg-amber-400' : 'bg-neutral-300';
 
   return (
-    <div className="mt-6 rounded-lg border border-neutral-200 bg-white p-5">
+    <div className="rounded-xl border border-neutral-200 bg-white p-5">
       <div className="flex items-center gap-2">
         <span className={`h-2 w-2 rounded-full ${dot}`} />
         <p className="text-sm font-medium text-neutral-700">Live activity</p>
@@ -87,7 +100,7 @@ function SyncPanel() {
   }
 
   return (
-    <div className="mt-6 rounded-lg border border-neutral-200 bg-white p-5">
+    <div className="rounded-xl border border-neutral-200 bg-white p-5">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-neutral-700">Cloud sync</p>
@@ -154,47 +167,59 @@ function SyncPanel() {
 
 function DashboardContent() {
   const { user } = useAuth();
-  const [stats, setStats] = useState({ courses: '—', learners: '—', pending: '—' });
+  const { pendingCount } = useSync();
+  const [stats, setStats] = useState({ courses: '—', learners: '—' });
 
   useEffect(() => {
     (async () => {
       try {
         const [c, l] = await Promise.all([coursesApi.list(), learnersApi.list({ limit: 1 })]);
-        setStats((s) => ({
-          ...s,
+        setStats({
           courses: c.courses.filter((x) => x.status === 'active').length,
           learners: l.total,
-        }));
+        });
       } catch {
         // leave placeholders
       }
     })();
   }, []);
 
-  const cards = [
-    { label: 'Active Courses', value: stats.courses },
-    { label: 'Pending Scores', value: stats.pending },
-    { label: 'Learners', value: stats.learners },
-  ];
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-neutral-900">Dashboard</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Signed in as {user.email} · Roles: {user.roles.join(', ')}
-      </p>
+      <div className="border-b border-neutral-200 pb-5">
+        <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">
+          {greeting()}, {user.firstName}
+        </h1>
+        <p className="mt-1 text-sm text-neutral-500">{today}</p>
+      </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {cards.map((c) => (
-          <div key={c.label} className="rounded-lg border border-neutral-200 bg-white p-5">
-            <p className="text-sm text-neutral-500">{c.label}</p>
-            <p className="mt-2 text-2xl font-semibold text-neutral-900">{c.value}</p>
-          </div>
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Active courses" value={stats.courses} icon="courses" />
+        <StatCard label="Learners" value={stats.learners} icon="learners" />
+        <StatCard label="Queued offline" value={pendingCount} icon="pending" hint={pendingCount ? 'Will sync when online' : 'All synced'} />
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {QUICK_ACTIONS.map((a) => (
+          <Link key={a.href} href={a.href}
+            className="group flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-teal-300 hover:bg-teal-50/40">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500 transition-colors group-hover:bg-teal-100 group-hover:text-teal-700">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d={a.icon} /></svg>
+            </span>
+            <span>
+              <span className="block text-sm font-medium text-neutral-800">{a.label}</span>
+              <span className="block text-xs text-neutral-500">{a.desc}</span>
+            </span>
+          </Link>
         ))}
       </div>
 
-      <SyncPanel />
-      <LiveActivity />
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <SyncPanel />
+        <LiveActivity />
+      </div>
     </>
   );
 }

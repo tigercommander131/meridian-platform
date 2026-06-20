@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
+import PageHeader from '@/components/ui/PageHeader';
 import QrScanner from '@/components/shared/QrScanner';
 import { coursesApi, cohortsApi, sessionsApi } from '@/services/data';
 import { toast } from '@/stores/toastStore';
@@ -67,16 +68,17 @@ function SessionsContent() {
 
   return (
     <>
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Sessions</h1>
-          <p className="mt-1 text-sm text-neutral-500">Run a simulation: check in learners, assign roles, score.</p>
-        </div>
-        <button onClick={() => setScanning(true)}
-          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100">
-          Scan QR
-        </button>
-      </div>
+      <PageHeader
+        title="Sessions"
+        subtitle="Run a simulation: check in learners, assign roles, score."
+        action={
+          <button onClick={() => setScanning(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-700 hover:bg-neutral-100">
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3M7 12h10" /></svg>
+            Scan QR
+          </button>
+        }
+      />
 
       {scanning && <QrScanner onResult={handleScan} onClose={() => setScanning(false)} />}
 

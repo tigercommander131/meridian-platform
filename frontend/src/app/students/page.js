@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/layout/AppShell';
+import PageHeader from '@/components/ui/PageHeader';
 import { learnersApi, parseCsv } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
@@ -159,19 +160,19 @@ function StudentsContent() {
 
   return (
     <>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-neutral-900">Students</h1>
-          <p className="mt-1 text-sm text-neutral-500">{total} learner{total === 1 ? '' : 's'}</p>
-        </div>
-        <button onClick={() => setImporting((v) => !v)}
-          className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-          {importing ? 'Close' : 'Add students'}
-        </button>
-      </div>
+      <PageHeader
+        title="Students"
+        subtitle={`${total} learner${total === 1 ? '' : 's'} enrolled`}
+        action={
+          <button onClick={() => setImporting((v) => !v)}
+            className="rounded-lg bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800">
+            {importing ? 'Close' : 'Add students'}
+          </button>
+        }
+      />
 
       {importing && (
-        <div className="mt-4 rounded-lg border border-neutral-200 bg-white p-5">
+        <div className="mt-4 rounded-xl border border-neutral-200 bg-white p-5">
           <div className="mb-3 flex gap-1 border-b border-neutral-200">
             {['manual', 'csv'].map((t) => (
               <button key={t} onClick={() => setTab(t)}
@@ -188,27 +189,27 @@ function StudentsContent() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="Search by name or email…"
-        className="mt-6 w-full max-w-sm rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+        className="mt-6 w-full max-w-sm rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
       />
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-neutral-200 bg-white">
+      <div className="mt-4 overflow-hidden rounded-xl border border-neutral-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="bg-neutral-50 text-left text-xs text-neutral-500">
+          <thead className="bg-neutral-50 text-left text-xs uppercase tracking-wide text-neutral-500">
             <tr>
-              <th className="px-4 py-2 font-medium">Name</th>
-              <th className="px-4 py-2 font-medium">Email</th>
-              <th className="px-4 py-2 font-medium">External ID</th>
+              <th className="px-4 py-2.5 font-medium">Name</th>
+              <th className="px-4 py-2.5 font-medium">Email</th>
+              <th className="px-4 py-2.5 font-medium">External ID</th>
             </tr>
           </thead>
           <tbody>
             {learners.length === 0 ? (
-              <tr><td colSpan={3} className="px-4 py-6 text-center text-neutral-400">No learners found</td></tr>
+              <tr><td colSpan={3} className="px-4 py-8 text-center text-neutral-400">No learners found</td></tr>
             ) : (
               learners.map((l) => (
-                <tr key={l.id} className="border-t border-neutral-100">
-                  <td className="px-4 py-2 text-neutral-800">{l.firstName} {l.lastName}</td>
-                  <td className="px-4 py-2 text-neutral-500">{l.email}</td>
-                  <td className="px-4 py-2 text-neutral-400">{l.externalId || '—'}</td>
+                <tr key={l.id} className="border-t border-neutral-100 transition-colors hover:bg-neutral-50">
+                  <td className="px-4 py-2.5 font-medium text-neutral-800">{l.firstName} {l.lastName}</td>
+                  <td className="px-4 py-2.5 text-neutral-500">{l.email}</td>
+                  <td className="px-4 py-2.5 text-neutral-400">{l.externalId || '—'}</td>
                 </tr>
               ))
             )}
