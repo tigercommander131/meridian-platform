@@ -2,12 +2,12 @@
 
 **Last updated:** 2026-06-20 (Week 1, Day 1-3 done)
 
-## Status: Week 2 COMPLETE + verified
+## Status: Week 3 COMPLETE + verified
 
-Week 1 (scaffold + DB + auth + offline storage) + Week 2 (auth state mgmt, refresh-token flow, app shell, tests) all working and verified.
+Weeks 1-3 done: scaffold + DB + auth + offline storage + auth state/app shell + **offline→cloud sync engine**. All working, tests green, verified in browser.
 
 ## Tests
-- Backend: `cd backend && npm test` — 9 passing (supertest: health, login, bad creds, refresh, protected route). Needs Postgres running.
+- Backend: `cd backend && npm test` — **13 passing** (auth 9 + sync 4: idempotency, conflict). Needs Postgres running.
 - Frontend: `cd frontend && npm test` — 2 passing (Jest+RTL: login renders, validation).
 
 ## Database
@@ -81,6 +81,21 @@ Dev login: `instructor@parasol.edu.au` / `password`
 
 **Harness note:** `preview_fill` doesn't trigger React's onChange for controlled inputs — use native setter + `input` event in `preview_eval` to drive forms. `preview_screenshot` hangs on the sql.js dashboard; verify via `preview_snapshot`.
 
+**Week 3 (offline→cloud sync engine):**
+- Migration `002_sync.sql` — `synced_events` idempotency log.
+- Backend `controllers/syncController.js` + `routes/sync.js` → `POST /api/sync` (auth'd):
+  - Idempotent: dedupe by `event_id` (re-send = no-op, returns `deduped: true`).
+  - Applies `learners.upsert` + `rubric_scores.upsert` to domain tables (org from JWT).
+  - Conflict detection per spec §9: if server score already `approved`/`released` and differs → returns `{status:'conflict', serverVersion, clientVersion, resolution:'manual_review_required'}`, does NOT overwrite. Per-event transaction (conflict/fail rolls back).
+  - `GET /api/sync/status` → count of this user's synced events.
+- Frontend `services/sync.js` `drainQueue()` — reads local outbox, POSTs, marks synced, returns conflicts.
+- `stores/syncStore.js` — `sync()` action (syncing/synced/error status, conflicts, lastSyncedAt).
+- `hooks/useSync.js` — auto-drains on mount (if online) and on `online` event.
+- Dashboard `SyncPanel` — status, "Sync now", conflict display.
+- Backend tests `src/__tests__/sync.test.js` (4): auth required, learner syncs to DB, idempotent re-send, conflict not overwritten.
+
+**VERIFIED (Week 3):** Browser — leftover queued event auto-drained on mount (reached Postgres, `synced_events`=2); clicked self-test → "1 queued" → "Sync now" → "All synced", second Offline learner landed in DB (count 1→2). Backend 13/13.
+
 ## VERIFIED
 - GET /api/health → 200
 - DB login good creds → JWT + user pulled from Postgres (Sarah Johnson / educator,observer).
@@ -88,11 +103,10 @@ Dev login: `instructor@parasol.edu.au` / `password`
 - Browser (Day 1): login form → dashboard.
 - DB: 15 tables, seeded rows confirmed (1 user, 2 learners, 2 sites, 1 rubric, 3 criteria).
 
-## PENDING (next — Week 3)
-- **Week 3: offline→cloud sync engine** — drain `sync_queue` to `POST /api/sync` when online; backend `/api/sync` is still a stub (needs real persistence + conflict handling per API spec §9).
-- Backend `/api/sync` endpoint + sync_events table/handling.
+## PENDING (next — Week 4)
+- **Week 4: real-time + error handling** — WebSocket server (broadcast events to connected clients, e.g. another instructor's check-in/score), auto-reconnect, polling fallback; toast notifications + error boundary; network status indicator (partly done via sync badge).
+- Conflict *resolution* UI (currently conflicts are surfaced, not resolvable) — Week 4+.
 - E2E tests (Playwright) — not started.
-- WebSocket / real-time — Week 4.
 - Harden `cryptography.js` passphrase (see SECURITY follow-up above).
 - Wire frontend to show real data (needs cohort/learner GET endpoints — Week 5).
 - **De-branding follow-up (optional):** repo name is neutral, but code still contains "PARASOL EMT" (login page title, seed data, db name `parasol_ems`, container `parasol-postgres`). Private repo mitigates. Full scrub = rename db/container + replace UI/seed strings if they ever want zero references.

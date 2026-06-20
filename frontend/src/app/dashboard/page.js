@@ -4,6 +4,66 @@ import { useState } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import { useAuth } from '@/hooks/useAuth';
 import { usePersist } from '@/hooks/usePersist';
+import { useSync } from '@/hooks/useSync';
+
+const STATUS_LABEL = {
+  idle: 'Idle',
+  pending: 'Pending sync',
+  syncing: 'Syncing…',
+  synced: 'All synced',
+  error: 'Needs attention',
+};
+
+function SyncPanel() {
+  const { isOnline, syncStatus, pendingCount, conflicts, sync } = useSync();
+  const [busy, setBusy] = useState(false);
+
+  async function handleSync() {
+    setBusy(true);
+    try {
+      await sync();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 rounded-lg border border-neutral-200 bg-white p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-neutral-700">Cloud sync</p>
+          <p className="mt-1 text-xs text-neutral-500">
+            {STATUS_LABEL[syncStatus] || syncStatus}
+            {pendingCount > 0 && ` · ${pendingCount} event${pendingCount === 1 ? '' : 's'} queued`}
+          </p>
+        </div>
+        <button
+          onClick={handleSync}
+          disabled={busy || !isOnline || pendingCount === 0}
+          className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-teal-800 disabled:opacity-50"
+          title={!isOnline ? 'Offline — will sync when back online' : pendingCount === 0 ? 'Nothing to sync' : 'Push queued events to the cloud'}
+        >
+          {busy ? 'Syncing…' : 'Sync now'}
+        </button>
+      </div>
+
+      {conflicts.length > 0 && (
+        <div className="mt-4 rounded-md bg-amber-50 p-3">
+          <p className="text-xs font-medium text-amber-800">
+            {conflicts.length} conflict{conflicts.length === 1 ? '' : 's'} — manual review required
+          </p>
+          <ul className="mt-2 space-y-1">
+            {conflicts.map((c) => (
+              <li key={c.eventId} className="text-xs text-amber-700">
+                {c.conflictType}: server {c.serverVersion?.totalScore} vs local {c.clientVersion?.totalScore}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function OfflineSelfTest() {
   const { create, list } = usePersist();
@@ -67,9 +127,10 @@ function DashboardContent() {
       </div>
 
       <OfflineSelfTest />
+      <SyncPanel />
 
       <p className="mt-8 text-xs text-neutral-400">
-        Week 2 — auth + app shell. Course data wires up in Week 5.
+        Week 3 — offline→cloud sync. Course data wires up in Week 5.
       </p>
     </>
   );
