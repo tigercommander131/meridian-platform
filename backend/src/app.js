@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/environment.js';
 import authRouter from './routes/auth.js';
@@ -14,6 +15,14 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 // Express app, no listener — imported by server.js (runtime) and tests (supertest).
 export function createApp() {
   const app = express();
+
+  // Behind Railway's proxy: trust it so req.ip / rate-limiting see the real
+  // client address rather than the proxy's.
+  app.set('trust proxy', 1);
+
+  // Security headers. crossOriginResourcePolicy relaxed so the separate
+  // frontend origin can call this API.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
   // Allowed origins: localhost for dev + anything in CORS_ORIGIN (comma-separated)
   // for deployed frontends. Set CORS_ORIGIN=https://your-app.up.railway.app in prod.

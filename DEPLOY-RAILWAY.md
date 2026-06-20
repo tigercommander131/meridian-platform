@@ -54,6 +54,35 @@ Open the frontend URL → **Create an account** (`/signup`). That creates your o
 *(Optional demo data:* backend service → **Settings → Deploy** → run `npm run seed`
 once in a shell to load the sample org/learners/rubric.)*
 
+## Make the database secure (the important part)
+
+Railway's PostgreSQL is **managed** — encrypted at rest, isolated, and **not
+exposed to the internet unless you explicitly add a public domain**. To keep it
+that way:
+
+1. **Connect over the private network.** In the backend's `DATABASE_URL`, use the
+   reference `${{Postgres.DATABASE_URL}}`. That resolves to Railway's *internal*
+   host (`*.railway.internal`) — traffic never leaves their private network and
+   needs no SSL. **Do NOT** click "Generate Domain" on the Postgres service; a
+   public DB endpoint is the main thing to avoid.
+   - If you *must* reach it from outside (e.g. a local `psql`), use the public
+     connection string Railway provides and set backend var `DATABASE_SSL=true`.
+2. **Strong, unique secrets.** `JWT_SECRET` / `JWT_REFRESH_SECRET` = fresh
+   `openssl rand -hex 32` each. The backend **refuses to start in production** if
+   these are still placeholders — that's intentional.
+3. **Least privilege + isolation.** The app already scopes every query by the
+   caller's organisation (multi-tenant), and passwords are bcrypt-hashed (cost 10).
+4. **Turn on backups.** Postgres service → **Settings → Backups** → enable
+   scheduled backups. Take one before any schema change.
+5. **Restrict CORS.** Set backend `CORS_ORIGIN` to exactly your frontend domain
+   (done in step 5 above) so only your app can call the API from a browser.
+6. **Rotate on exposure.** If a secret ever leaks, change the Railway variable and
+   redeploy — tokens signed with the old secret stop working immediately.
+
+What's already hardened in the app: Helmet security headers, `trust proxy` (real
+client IPs for rate-limiting), login (5/min) + signup (10/hr) rate limits,
+connection pooling with timeouts, and env-driven SSL/CORS.
+
 ## Notes & gotchas
 - **`NEXT_PUBLIC_API_URL` is build-time.** If the backend URL ever changes,
   redeploy the frontend so the new value is baked in.

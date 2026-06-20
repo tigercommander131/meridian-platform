@@ -7,7 +7,18 @@ let pool;
 
 export function getPool() {
   if (!pool) {
-    pool = new Pool({ connectionString: config.databaseUrl });
+    // Enable TLS when DATABASE_SSL=true or the URL asks for it (managed
+    // providers' public endpoints). Railway's *private* URL needs no SSL.
+    const url = config.databaseUrl || '';
+    const useSsl = process.env.DATABASE_SSL === 'true' || /sslmode=require/i.test(url);
+
+    pool = new Pool({
+      connectionString: config.databaseUrl,
+      ssl: useSsl ? { rejectUnauthorized: false } : undefined,
+      max: Number(process.env.PG_POOL_MAX) || 10,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 10_000,
+    });
     pool.on('error', (err) => {
       console.error('Unexpected DB client error:', err);
     });
