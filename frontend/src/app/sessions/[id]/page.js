@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
+import ScoresPanel from '@/components/scoring/ScoresPanel';
 import { sessionsApi, ROLES } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
@@ -116,6 +117,10 @@ function SessionDetail() {
           </tbody>
         </table>
       </div>
+
+      <h2 className="mt-8 text-sm font-semibold text-neutral-700">Scores</h2>
+      <p className="mb-3 mt-0.5 text-xs text-neutral-400">Approve → release to learners. Disputes reopen for re-review.</p>
+      <ScoresPanel sessionId={id} />
 
       <Link href="/sessions" className="mt-6 inline-block text-sm text-teal-700 hover:underline">← All sessions</Link>
     </>

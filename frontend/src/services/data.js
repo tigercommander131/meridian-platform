@@ -72,6 +72,29 @@ export const scoringApi = {
   submit(sessionId, participantId, payload) {
     return api.post(`/sessions/${sessionId}/participants/${participantId}/rubric-scores`, payload);
   },
+  detail(scoreId) {
+    return api.get(`/rubric-scores/${scoreId}`);
+  },
+  approve(scoreId) {
+    return api.put(`/rubric-scores/${scoreId}/approve`, {});
+  },
+  release(scoreId) {
+    return api.put(`/rubric-scores/${scoreId}/release`, {});
+  },
+  dispute(scoreId, reason) {
+    return api.put(`/rubric-scores/${scoreId}/dispute`, { reason });
+  },
+  reopen(scoreId) {
+    return api.put(`/rubric-scores/${scoreId}/reopen`, {});
+  },
+};
+
+// Score states + their display treatment (neutral palette + teal accent).
+export const SCORE_STATES = {
+  pending_approval: { label: 'Pending approval', cls: 'bg-amber-50 text-amber-700' },
+  approved: { label: 'Approved', cls: 'bg-teal-50 text-teal-700' },
+  released: { label: 'Released', cls: 'bg-neutral-900 text-white' },
+  disputed: { label: 'Disputed', cls: 'bg-rose-50 text-rose-700' },
 };
 
 export const ROLES = ['team_lead', 'airway_manager', 'compressor', 'documentation'];
