@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
+import { startTour } from '@/components/tour/Tour';
 
 // Vector icons (inline SVG, no emoji per design prefs).
 const icons = {
@@ -18,11 +19,11 @@ const icons = {
 const nav = [
   { section: 'Workspace' },
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', ready: true },
-  { href: '/students', label: 'Students', icon: 'students', ready: true },
-  { href: '/courses', label: 'Courses', icon: 'courses', ready: true },
+  { href: '/students', label: 'Students', icon: 'students', ready: true, tour: 'nav-students' },
+  { href: '/courses', label: 'Courses', icon: 'courses', ready: true, tour: 'nav-courses' },
   { href: '/cohorts', label: 'Cohorts', icon: 'cohorts', ready: true },
-  { href: '/sessions', label: 'Sessions', icon: 'sessions', ready: true },
-  { href: '/reports', label: 'Reports', icon: 'reports', ready: true },
+  { href: '/sessions', label: 'Sessions', icon: 'sessions', ready: true, tour: 'nav-sessions' },
+  { href: '/reports', label: 'Reports', icon: 'reports', ready: true, tour: 'nav-reports' },
   { section: 'Admin', adminOnly: true },
   { href: '/users', label: 'Team', icon: 'team', ready: true, adminOnly: true },
 ];
@@ -41,7 +42,7 @@ export default function Sidebar({ onNavigate }) {
   const isAdmin = user?.roles?.includes('admin');
 
   return (
-    <nav className="flex h-full flex-col gap-0.5 p-3">
+    <nav data-tour="sidebar" className="flex h-full flex-col gap-0.5 p-3">
       {nav.map((item, i) => {
         if (item.adminOnly && !isAdmin) return null;
 
@@ -65,7 +66,7 @@ export default function Sidebar({ onNavigate }) {
           );
         }
         return (
-          <Link key={item.href} href={item.href} onClick={onNavigate}
+          <Link key={item.href} href={item.href} onClick={onNavigate} data-tour={item.tour}
             className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
               active ? 'bg-teal-50 font-medium text-teal-700' : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
             }`}>
@@ -76,6 +77,17 @@ export default function Sidebar({ onNavigate }) {
           </Link>
         );
       })}
+
+      <button
+        onClick={startTour}
+        className="mt-auto flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800"
+      >
+        <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9.5 9a2.5 2.5 0 114 2c-1 .7-1.5 1.2-1.5 2.2M12 17h.01" />
+        </svg>
+        Take a tour
+      </button>
     </nav>
   );
 }

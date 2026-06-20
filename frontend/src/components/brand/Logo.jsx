@@ -15,8 +15,8 @@ export function Wordmark({ subtitle = false }) {
     <div className="flex items-center gap-2.5">
       <LogoMark className="h-8 w-8" />
       <div className="leading-tight">
-        <p className="text-sm font-semibold tracking-tight text-neutral-900">PARASOL EMT</p>
-        {subtitle && <p className="text-[11px] text-neutral-400">Student Management System</p>}
+        <p className="text-sm font-semibold tracking-tight text-neutral-900">Indigo Learning</p>
+        {subtitle && <p className="text-[11px] text-neutral-400">Learning Operations Platform</p>}
       </div>
     </div>
   );

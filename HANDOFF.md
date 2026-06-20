@@ -1,6 +1,13 @@
 # PARASOL EMS — Handoff
 
-**Last updated:** 2026-06-20 (Weeks 1-16 COMPLETE + Course Management UI)
+**Last updated:** 2026-06-20 (LIVE on Railway · rebranded "Indigo Learning" · onboarding tour)
+
+## Live deployment (Railway)
+- App (frontend): https://captivating-heart-production-7552.up.railway.app
+- API (backend):  https://meridian-platform-production-e2a0.up.railway.app  (health: `/api/health`)
+- Repo `tigercommander131/meridian-platform`, branch `main` auto-deploys both services. Postgres = managed, private network (`${{Postgres.DATABASE_URL}}`).
+- Backend env: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `NODE_ENV=production`, `CORS_ORIGIN`=frontend URL. Frontend env: `NEXT_PUBLIC_API_URL`=backend URL (build-time).
+- **Direction:** evolving toward the "Indigo Learning" spec (see `~/Documents/*.pdf`); core (org/course/cohort/session/assessment) already matches its MVP. Next big concept = Learning Record as the central object.
 
 ## Status: 16-WEEK BUILD COMPLETE + verified
 
@@ -36,7 +43,8 @@ and serves.
 - Start DB: `docker start parasol-postgres` (created via `docker run`, see below).
 - Migrations: `npm run migrate:up` · status: `npm run migrate:status`
 - Seed: `npm run seed`
-- 15 tables. Seed (`npm run seed`): org `parasol-emt`, 2 sites, user `instructor@parasol.edu.au`, **3 courses** (2 active + 1 completed), **3 cohorts** (learners attached, QR set), **10 learners**, **2 rubrics** (ALS VF Team Lead + BLS Adult) with criteria. Idempotent (`ON CONFLICT DO NOTHING`). Run once on Railway after first deploy.
+- 15 tables. Seed (`npm run seed`): org `parasol-emt`, 2 sites, user `instructor@parasol.edu.au`, **3 courses** (2 active + 1 completed), **3 cohorts** (learners attached, QR set), **10 learners**, **2 rubrics** (ALS VF Team Lead + BLS Adult) with criteria. Idempotent.
+- **Demo orgs seed (`npm run seed:demo`)**: 3 training orgs — **ATO** (Armstrong, sites Sydney/Canberra/Newcastle, courses ALS+PALS), **BRC** (Buzz Resus Council, Melbourne/Geelong/Adelaide, ALS+APLS+ATLS), **CSC** (Collins Sim, Brisbane/Gold Coast/Sunshine Coast, PALS+APLS+ATLS). Each: sites, admin login `admin@<org>.example` / `password`, a rubric+criteria per course type, concrete courses, a sample cohort + 4 learners. Idempotent. Run on Railway Console to load into the live DB.
 
 To recreate the container from scratch:
 ```

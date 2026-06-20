@@ -42,7 +42,7 @@ export default function Header({ user, onLogout, onMenu }) {
         </button>
         <div className="flex items-center gap-2.5">
           <LogoMark className="h-7 w-7" />
-          <span className="text-sm font-semibold tracking-tight text-neutral-900">PARASOL EMT</span>
+          <span className="text-sm font-semibold tracking-tight text-neutral-900">Indigo Learning</span>
         </div>
       </div>
 

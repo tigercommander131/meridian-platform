@@ -8,6 +8,8 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import ToastContainer from '@/components/shared/Toast';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
+import Tour from '@/components/tour/Tour';
+import { TOUR_STEPS } from '@/components/tour/steps';
 
 /**
  * Authenticated app frame. Guards the route (redirects to /login when not
@@ -67,6 +69,7 @@ export default function AppShell({ children }) {
       </div>
 
       <ToastContainer />
+      <Tour steps={TOUR_STEPS} />
     </div>
   );
 }

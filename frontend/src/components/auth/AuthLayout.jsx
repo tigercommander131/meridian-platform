@@ -24,7 +24,7 @@ export default function AuthLayout({ title, subtitle, children, footer }) {
         {footer && <div className="mt-5 text-center text-sm text-neutral-500">{footer}</div>}
 
         <p className="mt-8 text-center text-xs text-neutral-400">
-          PARASOL EMT · ALS training assessment
+          Indigo Learning · Simulation-based education
         </p>
       </div>
     </div>

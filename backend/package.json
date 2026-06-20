@@ -9,6 +9,7 @@
     "migrate:down": "node src/migrations/run.js down",
     "migrate:status": "node src/migrations/run.js status",
     "seed": "node src/seeders/run.js",
+    "seed:demo": "node src/seeders/demo-orgs.js",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
