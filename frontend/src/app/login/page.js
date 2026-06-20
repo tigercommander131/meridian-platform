@@ -1,15 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/services/api';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { isAuthenticated, login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Already logged in → skip the form.
+  useEffect(() => {
+    if (isAuthenticated) router.replace('/dashboard');
+  }, [isAuthenticated, router]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -20,7 +26,7 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
-      await auth.login(username, password);
+      await login(username, password);
       router.push('/dashboard');
     } catch (err) {
       setError(err.message);

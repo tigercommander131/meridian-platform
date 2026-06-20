@@ -2,9 +2,13 @@
 
 **Last updated:** 2026-06-20 (Week 1, Day 1-3 done)
 
-## Status: Week 1 COMPLETE (Day 1-5) + verified
+## Status: Week 2 COMPLETE + verified
 
-Scaffold + database + auth + offline storage all working. Backend + frontend running, auth end-to-end against PostgreSQL, offline SQLite persists across reload.
+Week 1 (scaffold + DB + auth + offline storage) + Week 2 (auth state mgmt, refresh-token flow, app shell, tests) all working and verified.
+
+## Tests
+- Backend: `cd backend && npm test` — 9 passing (supertest: health, login, bad creds, refresh, protected route). Needs Postgres running.
+- Frontend: `cd frontend && npm test` — 2 passing (Jest+RTL: login renders, validation).
 
 ## Database
 - PostgreSQL 14 in Docker container `parasol-postgres` (port 5432).
@@ -63,6 +67,20 @@ Dev login: `instructor@parasol.edu.au` / `password`
 
 **SECURITY follow-up:** `cryptography.js` uses a hardcoded dev passphrase. Before any real data, derive the key from the user session / device secret — never the constant. Tracked here.
 
+**Week 2 (auth + app shell + tests):**
+- `stores/authStore.js` (Zustand) + `hooks/useAuth.js` — reactive auth state, hydrates from localStorage. api.js owns token storage.
+- `services/api.js` — refresh-token flow: auto-refreshes once on 401 via `/auth/refresh`, retries the request, clears session on failure. Stores refreshToken.
+- App shell: `components/layout/{Header,Sidebar,AppShell}.jsx` — responsive (sidebar fixed on md+, slide-over on mobile), sync badge in header, nav with Dashboard active + Students/Sessions/Reports "Soon".
+- `AppShell` guards routes (redirect to /login when unauthenticated); `/login` redirects to /dashboard when already authed. Auth persists across refresh.
+- Dashboard refactored to render inside AppShell.
+- Backend refactored: `src/app.js` (createApp, no listener) imported by `server.js` + tests.
+- Backend rate limiter skips in test env (`config.nodeEnv === 'test'`).
+- Tests: backend `src/__tests__/auth.test.js` (9), frontend `src/app/login/__tests__/login.test.jsx` (2).
+
+**VERIFIED (Week 2):** Browser — login via store → dashboard with full shell (header + sidebar); sync badge shows persisted "1 queued"; `/login` while authed → redirects to `/dashboard`. Both test suites green.
+
+**Harness note:** `preview_fill` doesn't trigger React's onChange for controlled inputs — use native setter + `input` event in `preview_eval` to drive forms. `preview_screenshot` hangs on the sql.js dashboard; verify via `preview_snapshot`.
+
 ## VERIFIED
 - GET /api/health → 200
 - DB login good creds → JWT + user pulled from Postgres (Sarah Johnson / educator,observer).
@@ -70,10 +88,10 @@ Dev login: `instructor@parasol.edu.au` / `password`
 - Browser (Day 1): login form → dashboard.
 - DB: 15 tables, seeded rows confirmed (1 user, 2 learners, 2 sites, 1 rubric, 3 criteria).
 
-## PENDING (next — Week 2)
-- **Week 2: real auth integration** — useAuth hook (Zustand authStore), wire refresh-token flow into frontend, protected-route persistence on refresh.
-- Actual offline→cloud sync: drain `sync_queue` to `POST /api/sync` when online (backend `/api/sync` is still a stub — Week 3).
-- No tests yet (Jest/RTL/Playwright) — Week 2 adds them.
+## PENDING (next — Week 3)
+- **Week 3: offline→cloud sync engine** — drain `sync_queue` to `POST /api/sync` when online; backend `/api/sync` is still a stub (needs real persistence + conflict handling per API spec §9).
+- Backend `/api/sync` endpoint + sync_events table/handling.
+- E2E tests (Playwright) — not started.
 - WebSocket / real-time — Week 4.
 - Harden `cryptography.js` passphrase (see SECURITY follow-up above).
 - Wire frontend to show real data (needs cohort/learner GET endpoints — Week 5).
