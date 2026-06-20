@@ -239,10 +239,6 @@ function DashboardContent() {
       <OfflineSelfTest />
       <SyncPanel />
       <LiveActivity />
-
-      <p className="mt-8 text-xs text-neutral-400">
-        Week 4 — real-time + error handling. Course data wires up in Week 5.
-      </p>
     </>
   );
 }

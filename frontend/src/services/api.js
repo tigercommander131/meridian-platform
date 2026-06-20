@@ -113,6 +113,11 @@ export const auth = {
     setSession(data);
     return data.user;
   },
+  async register(details) {
+    const data = await request('/auth/register', { method: 'POST', body: details });
+    setSession(data);
+    return data.user;
+  },
   logout() {
     clearToken();
   },

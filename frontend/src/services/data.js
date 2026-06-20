@@ -23,6 +23,15 @@ export const coursesApi = {
   },
 };
 
+export const usersApi = {
+  list() {
+    return api.get(`/organisations/${orgId()}/users`);
+  },
+  create(record) {
+    return api.post(`/organisations/${orgId()}/users`, record);
+  },
+};
+
 export const cohortsApi = {
   listForCourse(courseId) {
     return api.get(`/courses/${courseId}/cohorts`);
