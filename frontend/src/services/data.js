@@ -35,6 +35,47 @@ export const cohortsApi = {
   },
 };
 
+export const sessionsApi = {
+  listForCohort(cohortId) {
+    return api.get(`/cohorts/${cohortId}/sessions`);
+  },
+  create(cohortId, payload) {
+    return api.post(`/cohorts/${cohortId}/sessions`, payload);
+  },
+  get(sessionId) {
+    return api.get(`/sessions/${sessionId}`);
+  },
+  checkin(sessionId, participantId, method = 'manual') {
+    return api.put(`/sessions/${sessionId}/participants/${participantId}/checkin`, { method });
+  },
+  assignRole(sessionId, participantId, role) {
+    return api.put(`/sessions/${sessionId}/participants/${participantId}/role`, { role });
+  },
+  start(sessionId) {
+    return api.post(`/sessions/${sessionId}/start`, {});
+  },
+  end(sessionId) {
+    return api.post(`/sessions/${sessionId}/end`, {});
+  },
+  ingestEvent(sessionId, payload) {
+    return api.post(`/sessions/${sessionId}/flight-recorder-events`, payload);
+  },
+  scores(sessionId) {
+    return api.get(`/sessions/${sessionId}/rubric-scores`);
+  },
+};
+
+export const scoringApi = {
+  context(sessionId, participantId) {
+    return api.get(`/sessions/${sessionId}/participants/${participantId}/scoring-context`);
+  },
+  submit(sessionId, participantId, payload) {
+    return api.post(`/sessions/${sessionId}/participants/${participantId}/rubric-scores`, payload);
+  },
+};
+
+export const ROLES = ['team_lead', 'airway_manager', 'compressor', 'documentation'];
+
 // Minimal CSV parser: header row + comma-separated values.
 // Recognised headers: firstName, lastName, email, externalId, phone.
 export function parseCsv(text) {

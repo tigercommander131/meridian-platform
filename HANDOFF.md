@@ -2,20 +2,23 @@
 
 **Last updated:** 2026-06-20 (Week 1, Day 1-3 done)
 
-## Status: Week 6 COMPLETE + verified
+## Status: Week 10 COMPLETE + verified
 
-Weeks 1-6 done. Foundation (1-4) + first features: **Week 5 student management** (CSV/manual import, searchable list) + **Week 6 cohorts + QR**. All working, tests green, verified in browser.
+Weeks 1-10 done. Foundation (1-4) + students (5) + cohorts/QR (6) + **sessions lifecycle, check-in, roles, flight recorder (7-9)** + **rubric scoring with evidence (10)**. The core value path works end-to-end. Tests green, verified in browser.
 
 ## Tests
-- Backend: `cd backend && npm test` — **26 passing** (auth 9 + sync 4 + realtime 2 + learners 6 + cohorts 5). Needs Postgres running.
+- Backend: `cd backend && npm test` — **33 passing** (auth 9 + sync 4 + realtime 2 + learners 6 + cohorts 5 + sessions/scoring 7). Needs Postgres running.
 - Frontend: `cd frontend && npm test` — 2 passing (Jest+RTL: login renders, validation).
 
 ## Routes (live)
-- Auth: `/api/auth/*` · Sync: `/api/sync` · WS: `/ws`
-- Learners: `GET/POST /api/organisations/:org/learners` (single+batch, search, pagination)
-- Courses: `GET /api/organisations/:org/courses`
-- Cohorts: `POST/GET /api/courses/:course/cohorts`, `GET /api/cohorts/:id`
-- Frontend pages: `/dashboard` `/students` `/cohorts` `/cohorts/[id]` (Sessions/Reports still "Soon")
+- Auth `/api/auth/*` · Sync `/api/sync` · WS `/ws`
+- Learners `GET/POST /api/organisations/:org/learners` · Courses `GET /api/organisations/:org/courses`
+- Cohorts `POST/GET /api/courses/:course/cohorts`, `GET /api/cohorts/:id`
+- Sessions `POST/GET /api/cohorts/:id/sessions`, `GET /api/sessions/:id`, `POST .../start|end`
+- Participants `PUT /api/sessions/:id/participants/:pid/checkin|role`
+- Flight recorder `POST /api/sessions/:id/flight-recorder-events`, `GET .../participants/:pid/flight-recorder-events`
+- Scoring `GET .../participants/:pid/scoring-context`, `POST .../rubric-scores`, `GET /api/sessions/:id/rubric-scores`, `GET /api/rubrics/:id`
+- Frontend pages: `/dashboard` `/students` `/cohorts` `/cohorts/[id]` `/sessions` `/sessions/[id]` `/scoring/[sessionId]/[participantId]` (Reports still "Soon")
 
 ## Database
 - PostgreSQL 14 in Docker container `parasol-postgres` (port 5432).
@@ -126,6 +129,16 @@ Dev login: `instructor@parasol.edu.au` / `password`
 
 **VERIFIED (Week 5-6):** Browser — Students list showed 6→7 after manual import (Grace Hopper landed via backend→DB→refresh); created cohort "Demo Batch A" with 2 learners; cohort detail rendered a real QR data-image (token `COHORT_cohort_...`) + 2-person roster + print button. Backend 26/26.
 
+**Weeks 7-10 (sessions + scoring):**
+- Backend `sessionsController.js`: createSession (auto-rosters participants from cohort), listCohortSessions, getSession (+roster), checkin (roster frozen once started → 409), assignRole, start, end, flight-recorder ingest + per-participant query. Broadcasts session/participant events.
+- Backend `rubricsController.js`: getRubric, **scoringContext** (resolves rubric by scenario+role, flattens flight-recorder params into an `evidence` map), submitScore (computes total, `pending_approval`), listSessionScores. Routes `sessions.js` + `rubrics.js`.
+- Frontend: `/sessions` (cohort picker, create, list), `/sessions/[id]` (roster: check-in, role select, start/end, "+ evidence" demo button since no real simulator, Score link), `/scoring/[sessionId]/[participantId]` (criteria with point inputs, **flight-recorder evidence pre-filled per criterion**, live total, notes, save).
+- Sidebar Sessions now active. Tests `sessions.test.js` (7, full lifecycle→scoring).
+
+**VERIFIED (Week 7-10):** Browser full flow — created session for Demo Batch A → checked in Grace Hopper → role team_lead → added flight-recorder evidence → scoring page showed evidence pre-filled (`timeToFirstCompression=11`, `compressionDepthMM=52`), live total computed 24 → saved → persisted as `Grace Hopper | team_lead | 24 | pending_approval`. Backend 33/33.
+
+**Gotcha logged:** added a route (`GET /cohorts/:id/sessions`) after a backend restart → 404 until next restart. Always restart the backend (`node src/server.js`) after adding/removing routes; nodemon (`npm run dev`) would auto-reload.
+
 **Harness note:** `preview_screenshot` hangs on ALL authed pages (AppShell → Header → SyncBadge → useSync → sql.js init). Verify via `preview_snapshot` / `preview_eval` DOM checks instead.
 
 ## VERIFIED
@@ -135,13 +148,15 @@ Dev login: `instructor@parasol.edu.au` / `password`
 - Browser (Day 1): login form → dashboard.
 - DB: 15 tables, seeded rows confirmed (1 user, 2 learners, 2 sites, 1 rubric, 3 criteria).
 
-## PENDING (next — Week 7)
-- **Week 7: roster & QR check-in** — QR scanner component (camera), session roster with live check-in status, manual check-in fallback, session start flow (freeze roster). Backend: `POST /sessions/:id/participants/checkin`, `GET /sessions/:id/roster`, `POST /sessions/:id/start`. (Sessions table already exists.)
+## PENDING (next — Weeks 11-12)
+- **Week 11: approval workflow** — educator approve → release scores to learner (state machine pending_approval → approved → released; dispute path). Backend score state transitions + `PUT /rubric-scores/:id/approve|release`. UI on a session's scores list.
+- **Week 12: learner reports** — candidate report view after release; PDF download (jsPDF).
+- Real QR *scanning* (camera) — currently check-in is manual button; scanner component deferred.
 - Conflict *resolution* UI (conflicts surfaced, not yet resolvable).
-- WebSocket polling fallback not implemented (reconnect works; long-poll fallback deferred).
+- WebSocket polling fallback not implemented (reconnect works).
 - E2E tests (Playwright) — not started.
 - Harden `cryptography.js` passphrase (see SECURITY follow-up above).
-- Frontend tests cover only login so far — add coverage for students/cohorts pages.
+- Frontend tests cover only login — add coverage for students/cohorts/sessions/scoring pages.
 - **De-branding follow-up (optional):** repo name is neutral, but code still contains "PARASOL EMT" (login page title, seed data, db name `parasol_ems`, container `parasol-postgres`). Private repo mitigates. Full scrub = rename db/container + replace UI/seed strings if they ever want zero references.
 
 ## BUGS

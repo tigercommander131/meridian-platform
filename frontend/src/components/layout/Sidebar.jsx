@@ -16,7 +16,7 @@ const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', ready: true },
   { href: '/students', label: 'Students', icon: 'students', ready: true },
   { href: '/cohorts', label: 'Cohorts', icon: 'cohorts', ready: true },
-  { href: '/sessions', label: 'Sessions', icon: 'sessions', ready: false },
+  { href: '/sessions', label: 'Sessions', icon: 'sessions', ready: true },
   { href: '/reports', label: 'Reports', icon: 'reports', ready: false },
 ];
 
