@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
+import QrScanner from '@/components/shared/QrScanner';
 import { coursesApi, cohortsApi, sessionsApi } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
@@ -13,11 +15,20 @@ const STATUS_STYLE = {
 };
 
 function SessionsContent() {
+  const router = useRouter();
   const [cohorts, setCohorts] = useState([]);
   const [cohortId, setCohortId] = useState('');
   const [sessions, setSessions] = useState([]);
   const [scenario, setScenario] = useState('scenario_vf_adult');
   const [busy, setBusy] = useState(false);
+  const [scanning, setScanning] = useState(false);
+
+  function handleScan(code) {
+    setScanning(false);
+    if (code.startsWith('SESSION_')) router.push(`/sessions/${code.slice('SESSION_'.length)}`);
+    else if (code.startsWith('COHORT_')) router.push(`/cohorts/${code.slice('COHORT_'.length)}`);
+    else toast.error(`Unrecognised code: ${code}`);
+  }
 
   useEffect(() => {
     (async () => {
@@ -56,8 +67,18 @@ function SessionsContent() {
 
   return (
     <>
-      <h1 className="text-xl font-semibold text-neutral-900">Sessions</h1>
-      <p className="mt-1 text-sm text-neutral-500">Run a simulation: check in learners, assign roles, score.</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-neutral-900">Sessions</h1>
+          <p className="mt-1 text-sm text-neutral-500">Run a simulation: check in learners, assign roles, score.</p>
+        </div>
+        <button onClick={() => setScanning(true)}
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100">
+          Scan QR
+        </button>
+      </div>
+
+      {scanning && <QrScanner onResult={handleScan} onClose={() => setScanning(false)} />}
 
       <div className="mt-4 flex flex-wrap items-end gap-3">
         <div>

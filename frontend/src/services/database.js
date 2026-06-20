@@ -120,3 +120,9 @@ export async function pendingEvents() {
 export async function markSynced(eventId) {
   await run(`UPDATE sync_queue SET status = 'synced' WHERE event_id = ?`, [eventId]);
 }
+
+/** Fetch a single queued event by id (for conflict resolution). */
+export async function getEvent(eventId) {
+  const rows = await all(`SELECT * FROM sync_queue WHERE event_id = ?`, [eventId]);
+  return rows[0] || null;
+}

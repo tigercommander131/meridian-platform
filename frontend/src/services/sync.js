@@ -1,5 +1,5 @@
 import { api } from './api';
-import { pendingEvents, markSynced } from './database';
+import { pendingEvents, markSynced, getEvent } from './database';
 
 /**
  * Drain the offline outbox to the cloud.
@@ -36,4 +36,35 @@ export async function drainQueue() {
     conflicts,
     drained: pending.length,
   };
+}
+
+/**
+ * Resolve a single sync conflict.
+ *  - choice 'server': keep the server version, discard the local edit.
+ *  - choice 'mine':   re-send the local event with an override so it wins.
+ */
+export async function resolveConflict(eventId, choice) {
+  const local = await getEvent(eventId);
+  if (!local) return { ok: false, reason: 'event not found locally' };
+
+  if (choice === 'server') {
+    await markSynced(eventId);
+    return { ok: true, choice };
+  }
+
+  // choice === 'mine'
+  const res = await api.post('/sync', {
+    events: [{
+      eventId,
+      eventType: local.event_type,
+      data: JSON.parse(local.payload),
+      resolution: 'override',
+    }],
+  });
+  const result = res.events.find((e) => e.eventId === eventId);
+  if (result && result.status === 'synced') {
+    await markSynced(eventId);
+    return { ok: true, choice };
+  }
+  return { ok: false, reason: result?.status || 'unknown' };
 }

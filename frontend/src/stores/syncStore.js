@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { pendingEvents } from '@/services/database';
-import { drainQueue } from '@/services/sync';
+import { drainQueue, resolveConflict } from '@/services/sync';
 
 export const useSyncStore = create((set, get) => ({
   isOnline: true,
@@ -45,5 +45,16 @@ export const useSyncStore = create((set, get) => ({
       set({ syncStatus: 'error' });
       throw err;
     }
+  },
+
+  // Resolve one conflict, then drop it from the list.
+  async resolve(eventId, choice) {
+    const result = await resolveConflict(eventId, choice);
+    if (result.ok) {
+      const remaining = get().conflicts.filter((c) => c.eventId !== eventId);
+      set({ conflicts: remaining, syncStatus: remaining.length ? 'error' : 'synced' });
+      await get().refreshPending();
+    }
+    return result;
   },
 }));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import { useAuth } from '@/hooks/useAuth';
 import { usePersist } from '@/hooks/usePersist';
@@ -54,8 +54,22 @@ const STATUS_LABEL = {
 };
 
 function SyncPanel() {
-  const { isOnline, syncStatus, pendingCount, conflicts, sync } = useSync();
+  const { isOnline, syncStatus, pendingCount, conflicts, sync, resolve } = useSync();
   const [busy, setBusy] = useState(false);
+  const [resolving, setResolving] = useState(null);
+
+  async function handleResolve(eventId, choice) {
+    setResolving(eventId + choice);
+    try {
+      const r = await resolve(eventId, choice);
+      if (r.ok) toast.success(choice === 'mine' ? 'Your version was forced through' : 'Kept the server version');
+      else toast.error(`Could not resolve: ${r.reason}`);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setResolving(null);
+    }
+  }
 
   async function handleSync() {
     setBusy(true);
@@ -94,14 +108,42 @@ function SyncPanel() {
       </div>
 
       {conflicts.length > 0 && (
-        <div className="mt-4 rounded-md bg-amber-50 p-3">
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3">
           <p className="text-xs font-medium text-amber-800">
-            {conflicts.length} conflict{conflicts.length === 1 ? '' : 's'} — manual review required
+            {conflicts.length} conflict{conflicts.length === 1 ? '' : 's'} — choose which version to keep
           </p>
-          <ul className="mt-2 space-y-1">
+          <ul className="mt-3 space-y-3">
             {conflicts.map((c) => (
-              <li key={c.eventId} className="text-xs text-amber-700">
-                {c.conflictType}: server {c.serverVersion?.totalScore} vs local {c.clientVersion?.totalScore}
+              <li key={c.eventId} className="rounded-md border border-amber-200 bg-white p-3">
+                <p className="text-xs text-neutral-600">
+                  This score was finalized on the server while you edited it offline.
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded border border-neutral-200 p-2">
+                    <p className="text-neutral-400">Server ({c.serverVersion?.state})</p>
+                    <p className="text-lg font-semibold text-neutral-800">{c.serverVersion?.totalScore}</p>
+                  </div>
+                  <div className="rounded border border-neutral-200 p-2">
+                    <p className="text-neutral-400">Your offline edit</p>
+                    <p className="text-lg font-semibold text-neutral-800">{c.clientVersion?.totalScore}</p>
+                  </div>
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => handleResolve(c.eventId, 'server')}
+                    disabled={resolving === c.eventId + 'server'}
+                    className="rounded-md border border-neutral-300 px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
+                  >
+                    Keep server
+                  </button>
+                  <button
+                    onClick={() => handleResolve(c.eventId, 'mine')}
+                    disabled={resolving === c.eventId + 'mine'}
+                    className="rounded-md bg-amber-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    Use my version
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

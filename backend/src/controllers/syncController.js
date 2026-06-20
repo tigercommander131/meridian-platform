@@ -29,22 +29,30 @@ async function applyEvent(client, event, user) {
     case 'rubric_scores.upsert':
     case 'RubricScored': {
       // Conflict: the server already finalized this score (approved/released).
+      const override = event.resolution === 'override';
       const existing = await client.query(
         `SELECT total_score, state FROM rubric_scores WHERE id = $1`,
         [data.id]
       );
       const row = existing.rows[0];
-      if (row && (row.state === 'approved' || row.state === 'released')) {
-        if (row.total_score !== data.total_score) {
-          return {
-            eventId,
-            status: 'conflict',
-            conflictType: 'RubricScoreUpdated',
-            serverVersion: { state: row.state, totalScore: row.total_score },
-            clientVersion: { state: data.state, totalScore: data.total_score },
-            resolution: 'manual_review_required',
-          };
-        }
+      if (row && (row.state === 'approved' || row.state === 'released') && row.total_score !== data.total_score && !override) {
+        return {
+          eventId,
+          status: 'conflict',
+          conflictType: 'RubricScoreUpdated',
+          scoreId: data.id,
+          serverVersion: { state: row.state, totalScore: row.total_score },
+          clientVersion: { state: data.state, totalScore: data.total_score },
+          resolution: 'manual_review_required',
+        };
+      }
+      // An accepted override of a finalized score is recorded in the audit trail.
+      if (override && row) {
+        await client.query(
+          `INSERT INTO score_audit (score_id, action, from_state, to_state, actor_id, actor_email, note)
+           VALUES ($1, 'override', $2, $3, $4, $5, $6)`,
+          [data.id, row.state, data.state || 'pending_approval', user.sub, user.email, 'Offline edit forced over server version on sync']
+        );
       }
       await client.query(
         `INSERT INTO rubric_scores

@@ -9,7 +9,7 @@ import { initDb } from '@/services/database';
  * cloud automatically when the connection returns. Mount once high in the tree.
  */
 export function useSync() {
-  const { isOnline, syncStatus, pendingCount, conflicts, setOnline, refreshPending, sync } =
+  const { isOnline, syncStatus, pendingCount, conflicts, setOnline, refreshPending, sync, resolve } =
     useSyncStore();
 
   useEffect(() => {
@@ -40,5 +40,5 @@ export function useSync() {
     };
   }, [setOnline, refreshPending, sync]);
 
-  return { isOnline, syncStatus, pendingCount, conflicts, refreshPending, sync };
+  return { isOnline, syncStatus, pendingCount, conflicts, refreshPending, sync, resolve };
 }

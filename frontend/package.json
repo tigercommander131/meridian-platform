@@ -13,6 +13,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "html5-qrcode": "^2.3.8",
     "jspdf": "^2.5.2",
     "next": "14.2.35",
     "qrcode": "^1.5.4",
