@@ -1,4 +1,4 @@
-import { api, auth } from './api';
+import { api, auth, apiDownload } from './api';
 
 function orgId() {
   return auth.getUser()?.organisationId;
@@ -100,6 +100,21 @@ export const SCORE_STATES = {
 export const reportsApi = {
   forLearner(learnerId) {
     return api.get(`/learners/${learnerId}/report`);
+  },
+};
+
+export const exportsApi = {
+  list(cohortId) {
+    return api.get(`/cohorts/${cohortId}/exports`);
+  },
+  audit(cohortId) {
+    return api.get(`/cohorts/${cohortId}/audit`);
+  },
+  downloadScores(cohortId) {
+    return apiDownload(`/cohorts/${cohortId}/exports/scores.csv`, `cohort_scores_${cohortId}.csv`);
+  },
+  downloadFlightRecorder(cohortId) {
+    return apiDownload(`/cohorts/${cohortId}/exports/flight-recorder.csv`, `flight_recorder_${cohortId}.csv`);
   },
 };
 

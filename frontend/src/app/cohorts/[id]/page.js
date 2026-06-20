@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import AppShell from '@/components/layout/AppShell';
+import ExportsPanel from '@/components/exports/ExportsPanel';
 import { cohortsApi } from '@/services/data';
 
 function CohortDetail() {
@@ -64,6 +65,8 @@ function CohortDetail() {
           </ul>
         </div>
       </div>
+
+      <ExportsPanel cohortId={id} />
     </>
   );
 }
