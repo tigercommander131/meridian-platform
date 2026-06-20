@@ -127,4 +127,38 @@ describe('POST /api/sync', () => {
     const row = await query(`SELECT total_score FROM rubric_scores WHERE id = 'score_sync_conflict'`);
     expect(row.rows[0].total_score).toBe(85);
   });
+
+  it('applies an override resolution over a finalized score and audits it', async () => {
+    const res = await request(app)
+      .post('/api/sync')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        events: [{
+          eventId: 'evt_test_override',
+          eventType: 'rubric_scores.upsert',
+          resolution: 'override',
+          data: {
+            id: 'score_sync_conflict',
+            session_id: 'session_sync_test',
+            participant_id: 'participant_sync_test',
+            learner_id: 'learner_001',
+            rubric_id: 'rubric_als_vf_adult_team_lead',
+            total_score: 91,
+            state: 'pending_approval',
+          },
+        }],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.synced).toBe(1);
+    expect(res.body.events[0].status).toBe('synced');
+
+    const row = await query(`SELECT total_score FROM rubric_scores WHERE id = 'score_sync_conflict'`);
+    expect(row.rows[0].total_score).toBe(91);
+
+    const audit = await query(`SELECT action FROM score_audit WHERE score_id = 'score_sync_conflict' AND action = 'override'`);
+    expect(audit.rowCount).toBe(1);
+
+    await query(`DELETE FROM synced_events WHERE event_id = 'evt_test_override'`);
+  });
 });
