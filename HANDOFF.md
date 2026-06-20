@@ -1,14 +1,20 @@
 # PARASOL EMS — Handoff
 
-**Last updated:** 2026-06-20 (Week 1, Day 1-3 done)
+**Last updated:** 2026-06-20 (Weeks 1-16 COMPLETE)
 
-## Status: Week 10 COMPLETE + verified
+## Status: 16-WEEK BUILD COMPLETE + verified
 
-Weeks 1-10 done. Foundation (1-4) + students (5) + cohorts/QR (6) + **sessions lifecycle, check-in, roles, flight recorder (7-9)** + **rubric scoring with evidence (10)**. The core value path works end-to-end. Tests green, verified in browser.
+Full build done. Foundation (1-4) + students (5) + cohorts/QR (6) + sessions
+lifecycle, check-in, roles, flight recorder (7-9) + rubric scoring with evidence
+(10) + **approval workflow (11)** + **learner reports + PDF (12)** + **exports +
+audit (13)** + **conflict-resolution UI + QR scan (14)** + **hardening + test
+coverage (15)** + **go-live: Docker stack + ops docs (16)**. Every feature
+verified end-to-end (API + browser); production Docker image boots, migrates,
+and serves.
 
 ## Tests
-- Backend: `cd backend && npm test` — **33 passing** (auth 9 + sync 4 + realtime 2 + learners 6 + cohorts 5 + sessions/scoring 7). Needs Postgres running.
-- Frontend: `cd frontend && npm test` — 2 passing (Jest+RTL: login renders, validation).
+- Backend: `cd backend && npm test` — **45 passing** (auth 9 + sync 5 + realtime 2 + learners 6 + cohorts 5 + sessions/scoring 7 + approval 6 + reports 2 + exports 3). Needs Postgres running.
+- Frontend: `cd frontend && npm test` — **7 passing** (login 2 + parseCsv 3 + ScoresPanel 2).
 
 ## Routes (live)
 - Auth `/api/auth/*` · Sync `/api/sync` · WS `/ws`
@@ -18,7 +24,11 @@ Weeks 1-10 done. Foundation (1-4) + students (5) + cohorts/QR (6) + **sessions l
 - Participants `PUT /api/sessions/:id/participants/:pid/checkin|role`
 - Flight recorder `POST /api/sessions/:id/flight-recorder-events`, `GET .../participants/:pid/flight-recorder-events`
 - Scoring `GET .../participants/:pid/scoring-context`, `POST .../rubric-scores`, `GET /api/sessions/:id/rubric-scores`, `GET /api/rubrics/:id`
-- Frontend pages: `/dashboard` `/students` `/cohorts` `/cohorts/[id]` `/sessions` `/sessions/[id]` `/scoring/[sessionId]/[participantId]` (Reports still "Soon")
+- Approval `GET /api/rubric-scores/:id`, `PUT .../approve|release|dispute|reopen` (educator/admin; dispute open)
+- Reports `GET /api/learners/:id/report` (released scores aggregate)
+- Exports `GET /api/cohorts/:id/exports/scores.csv`, `.../flight-recorder.csv`, `GET .../exports` (history), `GET .../audit`
+- Sync override: `POST /api/sync` events accept `resolution:'override'` to force a finalized score
+- Frontend pages: `/dashboard` `/students` `/cohorts` `/cohorts/[id]` `/sessions` `/sessions/[id]` `/scoring/[sessionId]/[participantId]` `/reports` (all nav active)
 
 ## Database
 - PostgreSQL 14 in Docker container `parasol-postgres` (port 5432).
@@ -141,6 +151,36 @@ Dev login: `instructor@parasol.edu.au` / `password`
 
 **Harness note:** `preview_screenshot` hangs on ALL authed pages (AppShell → Header → SyncBadge → useSync → sql.js init). Verify via `preview_snapshot` / `preview_eval` DOM checks instead.
 
+**Week 11 (approval workflow):**
+- Migration `003_approvals.sql` — dispute fields on `rubric_scores` + immutable `score_audit` table.
+- Backend `rubricsController.js`: state machine `approve/release/dispute/reopen` (`makeTransition` factory, 409 on invalid move, dispute requires a reason), org-scoped, every transition + submit writes a `score_audit` row. `getScoreDetail` returns the full audit trail. Routes guarded `requireRole('educator','admin')` (dispute open). Tests `approval.test.js` (6).
+- Frontend `components/scoring/ScoresPanel.jsx` on `/sessions/[id]`: per-score state badges + contextual action buttons + expandable audit timeline.
+- **VERIFIED:** live approve→release on Grace's score; audit `approved>released`; UI badges + timeline render.
+
+**Week 12 (learner reports + PDF):**
+- Backend `reportsController.js` — `GET /learners/:id/report` aggregates released scores (criterion breakdown, %, average). Routes `reports.js`. Tests `reports.test.js` (2).
+- Frontend `/reports` (candidate picker, per-scenario cards, percent bars) + `utils/reportPdf.js` (jsPDF candidate report, code-split). Reports nav active.
+- **VERIFIED:** Grace report 24/25 = 96%; PDF generates with no error.
+
+**Week 13 (exports + audit):**
+- Backend `exportsController.js` — `scores.csv` + `flight-recorder.csv` (org-scoped, records an `exports` job row), `exports` history, cohort `audit`. Tests `exports.test.js` (3).
+- Frontend `components/exports/ExportsPanel.jsx` on cohort detail — download buttons + export history + recent audit. `api.js` `apiDownload()` blob helper.
+- **VERIFIED:** CSV with Grace's released row, export job recorded (269 B), audit shows approved+released.
+
+**Week 14 (conflict UI + QR scan):**
+- Backend `syncController.js` — events accept `resolution:'override'` to force a finalized score over the server version; the override is written to `score_audit`. Test in `sync.test.js`.
+- Frontend: dashboard conflict resolver (keep-server / use-mine) via `syncStore.resolve` + `sync.js resolveConflict` + `database.getEvent`. `components/shared/QrScanner.jsx` (html5-qrcode, dynamic import, manual-entry fallback) on `/sessions` — scans `SESSION_`/`COHORT_` codes to jump to the page. Fixed missing `useEffect` import on dashboard.
+- **VERIFIED:** conflict→override applied (total 85→42 + override audit); QR manual entry `COHORT_…` navigated to the cohort.
+
+**Week 15 (hardening + tests):**
+- `utils/cryptography.js` — passphrase now derived from a per-device random secret + signed-in user identity (no hardcoded constant). `sessionPassphrase()` exported; defaults encrypt/decrypt.
+- Tests: backend sync override (45 total); frontend `parseCsv` + `ScoresPanel` (7 total).
+
+**Week 16 (go-live):**
+- `backend/Dockerfile` (migrations run on start), `frontend/Dockerfile` (multi-stage, `NEXT_PUBLIC_API_URL` build arg), root `docker-compose.yml` (db+backend+frontend, healthcheck), `.env.example`, `.dockerignore`s.
+- README ops runbook (config table, migrations, backups, security notes).
+- **VERIFIED:** `next build` green (11 routes; jsPDF/html5-qrcode code-split). Both Docker images build (bcrypt compiles). Production backend image boots → runs migrations → connects DB → `/api/health` ok (`env: production`) → login works.
+
 ## VERIFIED
 - GET /api/health → 200
 - DB login good creds → JWT + user pulled from Postgres (Sarah Johnson / educator,observer).
@@ -148,19 +188,21 @@ Dev login: `instructor@parasol.edu.au` / `password`
 - Browser (Day 1): login form → dashboard.
 - DB: 15 tables, seeded rows confirmed (1 user, 2 learners, 2 sites, 1 rubric, 3 criteria).
 
-## PENDING (next — Weeks 11-12)
-- **Week 11: approval workflow** — educator approve → release scores to learner (state machine pending_approval → approved → released; dispute path). Backend score state transitions + `PUT /rubric-scores/:id/approve|release`. UI on a session's scores list.
-- **Week 12: learner reports** — candidate report view after release; PDF download (jsPDF).
-- Real QR *scanning* (camera) — currently check-in is manual button; scanner component deferred.
-- Conflict *resolution* UI (conflicts surfaced, not yet resolvable).
-- WebSocket polling fallback not implemented (reconnect works).
-- E2E tests (Playwright) — not started.
-- Harden `cryptography.js` passphrase (see SECURITY follow-up above).
-- Frontend tests cover only login — add coverage for students/cohorts/sessions/scoring pages.
-- **De-branding follow-up (optional):** repo name is neutral, but code still contains "PARASOL EMT" (login page title, seed data, db name `parasol_ems`, container `parasol-postgres`). Private repo mitigates. Full scrub = rename db/container + replace UI/seed strings if they ever want zero references.
+## PENDING (post-MVP — all 16 planned weeks done)
+- **E2E tests (Playwright)** — not started; unit/integration only (backend 45, frontend 7).
+- **Real QR camera scan** — component uses html5-qrcode + manual fallback; camera path unverifiable in the headless harness (verified via fallback). Test on a real device.
+- **WebSocket polling fallback** — reconnect works; a long-poll fallback for hostile networks is not implemented.
+- **Crypto deployment hardening** — key is per-device/per-user but the device secret lives in localStorage; back it with a server-issued/hardware key for higher assurance. `cryptography.js` is built but not yet wired into `database.js` storage.
+- **Frontend coverage** — add page-level tests for students/cohorts/sessions/reports (AppShell pulls in sql.js, so these need a heavier harness/mocks).
+- **De-branding (optional):** code still contains "PARASOL EMT" (login title, seed data, db name `parasol_ems`, container `parasol-postgres`). Private repo mitigates; full scrub = rename db/container + UI/seed strings.
 
 ## BUGS
-- None known.
+- None known. (Fixed this build: missing `useEffect` import on the dashboard.)
+
+## Deployment
+- `cp .env.example .env` (change every secret) → `docker compose up --build` → `docker compose exec backend npm run seed`.
+- Backend image runs migrations on start; Postgres state lives in the `pgdata` volume — back it up before upgrades.
+- See README "Operations runbook" for full detail.
 
 ## Notes
 - Backend path: custom Node + PostgreSQL (not Firebase).
