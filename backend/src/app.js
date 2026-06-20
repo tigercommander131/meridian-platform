@@ -15,8 +15,19 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 export function createApp() {
   const app = express();
 
+  // Allowed origins: localhost for dev + anything in CORS_ORIGIN (comma-separated)
+  // for deployed frontends. Set CORS_ORIGIN=https://your-app.up.railway.app in prod.
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map((s) => s.trim()) : []),
+  ];
   app.use(cors({
-    origin: ['http://localhost:3000', 'http://localhost:3001'],
+    origin(origin, cb) {
+      // Allow same-origin/non-browser requests (no Origin header) and any listed origin.
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`Origin ${origin} not allowed by CORS`));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   }));
