@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/ui/PageHeader';
 import QrScanner from '@/components/shared/QrScanner';
-import { coursesApi, cohortsApi, sessionsApi } from '@/services/data';
+import { coursesApi, cohortsApi, sessionsApi, scenariosApi } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
 const STATUS_STYLE = {
@@ -20,7 +20,8 @@ function SessionsContent() {
   const [cohorts, setCohorts] = useState([]);
   const [cohortId, setCohortId] = useState('');
   const [sessions, setSessions] = useState([]);
-  const [scenario, setScenario] = useState('scenario_vf_adult');
+  const [scenarios, setScenarios] = useState([]);
+  const [scenarioId, setScenarioId] = useState('');
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
 
@@ -49,6 +50,9 @@ function SessionsContent() {
       });
       setCohorts(flat);
       if (flat[0]) setCohortId(flat[0].id);
+      const sc = await scenariosApi.list();
+      setScenarios(sc.scenarios || []);
+      if (sc.scenarios?.[0]) setScenarioId(sc.scenarios[0].scenarioId);
     })();
   }, []);
 
@@ -62,9 +66,11 @@ function SessionsContent() {
 
   async function createSession() {
     if (!cohortId) return toast.error('Pick a cohort first');
+    if (!scenarioId) return toast.error('Pick a scenario');
     setBusy(true);
     try {
-      await sessionsApi.create(cohortId, { scenarioId: scenario });
+      const sc = scenarios.find((s) => s.scenarioId === scenarioId);
+      await sessionsApi.create(cohortId, { scenarioId, scenarioName: sc?.name });
       toast.success('Session created');
       loadSessions(cohortId);
     } catch (e) {
@@ -73,6 +79,11 @@ function SessionsContent() {
       setBusy(false);
     }
   }
+
+  const groupedScenarios = scenarios.reduce((acc, s) => {
+    (acc[s.category] = acc[s.category] || []).push(s);
+    return acc;
+  }, {});
 
   return (
     <>
@@ -100,8 +111,15 @@ function SessionsContent() {
         </div>
         <div>
           <label className="text-xs text-neutral-500">Scenario</label>
-          <input value={scenario} onChange={(e) => setScenario(e.target.value)}
-            className="mt-1 block w-56 rounded-md border border-neutral-300 px-3 py-2 text-sm" />
+          <select value={scenarioId} onChange={(e) => setScenarioId(e.target.value)}
+            className="mt-1 block w-72 rounded-md border border-neutral-300 px-3 py-2 text-sm">
+            {scenarios.length === 0 && <option value="">No scenarios yet</option>}
+            {Object.entries(groupedScenarios).map(([cat, items]) => (
+              <optgroup key={cat} label={cat}>
+                {items.map((s) => <option key={s.scenarioId} value={s.scenarioId}>{s.name}</option>)}
+              </optgroup>
+            ))}
+          </select>
         </div>
         <button onClick={createSession} disabled={busy}
           className="rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50">
@@ -117,7 +135,7 @@ function SessionsContent() {
             <Link key={s.id} href={`/sessions/${s.id}`}
               className="flex items-center justify-between rounded-lg border border-neutral-200 bg-white px-4 py-3 hover:border-teal-300">
               <div>
-                <span className="text-sm font-medium text-neutral-800">{s.scenarioId}</span>
+                <span className="text-sm font-medium text-neutral-800">{s.scenarioName || s.scenarioId}</span>
                 <span className="ml-3 text-xs text-neutral-400">{s.checkedIn}/{s.total} checked in</span>
               </div>
               <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[s.status] || ''}`}>{s.status}</span>

@@ -48,6 +48,7 @@ and serves.
 - Migrations: `npm run migrate:up` · status: `npm run migrate:status`
 - Seed: `npm run seed`
 - 15 tables. Seed (`npm run seed`): org `parasol-emt`, 2 sites, user `instructor@parasol.edu.au`, **3 courses** (2 active + 1 completed), **3 cohorts** (learners attached, QR set), **10 learners**, **2 rubrics** (ALS VF Team Lead + BLS Adult) with criteria. Idempotent.
+- **Scenario library (`npm run seed:scenarios`)**: 9 example scenarios grouped by category (Adult Cardiac / Trauma / Paediatric / Medical), each a rubric (role NULL, 5 criteria) seeded into **every** org. Powers the session "Scenario" **picker** (`GET /api/organisations/:org/scenarios`, grouped). Keeps `scenario_vf_adult` so existing sessions resolve. Scoring resolves rubric by scenario (role-agnostic). Run on Railway Console.
 - **Demo orgs seed (`npm run seed:demo`)**: 3 training orgs — **ATO** (Armstrong, sites Sydney/Canberra/Newcastle, courses ALS+PALS), **BRC** (Buzz Resus Council, Melbourne/Geelong/Adelaide, ALS+APLS+ATLS), **CSC** (Collins Sim, Brisbane/Gold Coast/Sunshine Coast, PALS+APLS+ATLS). Each: sites, admin login `admin@<org>.example` / `password`, a rubric+criteria per course type, concrete courses, a sample cohort + 4 learners. Idempotent. Run on Railway Console to load into the live DB.
 
 To recreate the container from scratch:

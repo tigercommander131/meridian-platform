@@ -83,6 +83,7 @@ export async function listCohortSessions(req, res, next) {
       sessions: r.rows.map((s) => ({
         id: s.id,
         scenarioId: s.scenario_id,
+        scenarioName: s.scenario_name,
         status: s.status,
         checkedIn: s.checked_in,
         total: s.total,

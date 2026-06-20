@@ -34,6 +34,33 @@ export async function getRubric(req, res, next) {
   }
 }
 
+// GET /api/organisations/:orgId/scenarios — distinct scenarios (derived from the
+// org's rubrics) for the session picker, grouped by category.
+export async function listScenarios(req, res, next) {
+  try {
+    if (req.params.orgId !== req.user.organisationId) {
+      return res.status(403).json({ error: 'Cannot read another organisation', code: 'FORBIDDEN', status: 403 });
+    }
+    const r = await query(
+      `SELECT scenario_id, MIN(name) AS name, MAX(category) AS category
+       FROM rubrics
+       WHERE organisation_id = $1 AND scenario_id IS NOT NULL
+       GROUP BY scenario_id
+       ORDER BY MAX(category) NULLS LAST, MIN(name)`,
+      [req.params.orgId]
+    );
+    res.json({
+      scenarios: r.rows.map((s) => ({
+        scenarioId: s.scenario_id,
+        name: s.name,
+        category: s.category || 'Other',
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 // GET /api/sessions/:sessionId/participants/:participantId/scoring-context
 // Resolves the right rubric (by scenario + role) and the participant's flight
 // recorder evidence in one call for the scoring UI.

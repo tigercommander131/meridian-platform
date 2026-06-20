@@ -17,6 +17,12 @@ export const learnersApi = {
   },
 };
 
+export const scenariosApi = {
+  list() {
+    return api.get(`/organisations/${orgId()}/scenarios`);
+  },
+};
+
 export const coursesApi = {
   list(status) {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
