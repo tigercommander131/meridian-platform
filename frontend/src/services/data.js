@@ -18,9 +18,26 @@ export const learnersApi = {
 };
 
 export const coursesApi = {
-  list() {
-    return api.get(`/organisations/${orgId()}/courses`);
+  list(status) {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    return api.get(`/organisations/${orgId()}/courses${qs}`);
   },
+  get(courseId) {
+    return api.get(`/organisations/${orgId()}/courses/${courseId}`);
+  },
+  create(payload) {
+    return api.post(`/organisations/${orgId()}/courses`, payload);
+  },
+  update(courseId, payload) {
+    return api.put(`/organisations/${orgId()}/courses/${courseId}`, payload);
+  },
+};
+
+// Course lifecycle states + their display treatment (neutral + teal accent).
+export const COURSE_STATES = {
+  active: { label: 'Active', cls: 'bg-teal-50 text-teal-700' },
+  completed: { label: 'Completed', cls: 'bg-neutral-100 text-neutral-600' },
+  archived: { label: 'Archived', cls: 'bg-neutral-200 text-neutral-500' },
 };
 
 export const usersApi = {

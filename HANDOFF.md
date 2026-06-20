@@ -1,6 +1,6 @@
 # PARASOL EMS — Handoff
 
-**Last updated:** 2026-06-20 (Weeks 1-16 COMPLETE)
+**Last updated:** 2026-06-20 (Weeks 1-16 COMPLETE + Course Management UI)
 
 ## Status: 16-WEEK BUILD COMPLETE + verified
 
@@ -13,12 +13,13 @@ verified end-to-end (API + browser); production Docker image boots, migrates,
 and serves.
 
 ## Tests
-- Backend: `cd backend && npm test` — **45 passing** (auth 9 + sync 5 + realtime 2 + learners 6 + cohorts 5 + sessions/scoring 7 + approval 6 + reports 2 + exports 3). Needs Postgres running.
+- Backend: `cd backend && npm test` — **52 passing** (auth 9 + sync 5 + realtime 2 + learners 6 + cohorts 5 + sessions/scoring 7 + approval 6 + reports 2 + exports 3 + courses 7). Needs Postgres running.
 - Frontend: `cd frontend && npm test` — **7 passing** (login 2 + parseCsv 3 + ScoresPanel 2).
 
 ## Routes (live)
 - Auth `/api/auth/*` · Sync `/api/sync` · WS `/ws`
-- Learners `GET/POST /api/organisations/:org/learners` · Courses `GET /api/organisations/:org/courses`
+- Learners `GET/POST /api/organisations/:org/learners`
+- Courses `GET/POST /api/organisations/:org/courses`, `GET/PUT /api/organisations/:org/courses/:id` (create/list/get/update; write = educator/admin; list supports `?status=`)
 - Cohorts `POST/GET /api/courses/:course/cohorts`, `GET /api/cohorts/:id`
 - Sessions `POST/GET /api/cohorts/:id/sessions`, `GET /api/sessions/:id`, `POST .../start|end`
 - Participants `PUT /api/sessions/:id/participants/:pid/checkin|role`
@@ -28,14 +29,14 @@ and serves.
 - Reports `GET /api/learners/:id/report` (released scores aggregate)
 - Exports `GET /api/cohorts/:id/exports/scores.csv`, `.../flight-recorder.csv`, `GET .../exports` (history), `GET .../audit`
 - Sync override: `POST /api/sync` events accept `resolution:'override'` to force a finalized score
-- Frontend pages: `/dashboard` `/students` `/cohorts` `/cohorts/[id]` `/sessions` `/sessions/[id]` `/scoring/[sessionId]/[participantId]` `/reports` (all nav active)
+- Frontend pages: `/dashboard` `/students` `/courses` `/cohorts` `/cohorts/[id]` `/sessions` `/sessions/[id]` `/scoring/[sessionId]/[participantId]` `/reports` `/users` (all nav active). `/courses` → "Manage cohorts" deep-links `/cohorts?course=<id>`.
 
 ## Database
 - PostgreSQL 14 in Docker container `parasol-postgres` (port 5432).
 - Start DB: `docker start parasol-postgres` (created via `docker run`, see below).
 - Migrations: `npm run migrate:up` · status: `npm run migrate:status`
 - Seed: `npm run seed`
-- 15 tables. Seeded: org `parasol-emt`, 2 sites, user `instructor@parasol.edu.au`, 1 rubric + 3 criteria, 2 learners.
+- 15 tables. Seed (`npm run seed`): org `parasol-emt`, 2 sites, user `instructor@parasol.edu.au`, **3 courses** (2 active + 1 completed), **3 cohorts** (learners attached, QR set), **10 learners**, **2 rubrics** (ALS VF Team Lead + BLS Adult) with criteria. Idempotent (`ON CONFLICT DO NOTHING`). Run once on Railway after first deploy.
 
 To recreate the container from scratch:
 ```

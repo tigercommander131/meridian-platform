@@ -73,7 +73,11 @@ function CohortsContent() {
       const [c, l] = await Promise.all([coursesApi.list(), learnersApi.list({ limit: 200 })]);
       setCourses(c.courses);
       setLearners(l.learners);
-      if (c.courses[0]) setCourseId(c.courses[0].id);
+      // Honour a ?course=<id> deep-link (from the Courses page); else default to the first.
+      const wanted = new URLSearchParams(window.location.search).get('course');
+      const match = wanted && c.courses.find((x) => x.id === wanted);
+      if (match) setCourseId(match.id);
+      else if (c.courses[0]) setCourseId(c.courses[0].id);
     })();
   }, []);
 
