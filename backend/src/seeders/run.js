@@ -29,6 +29,14 @@ async function seed() {
     ['user_001', 'parasol-emt', 'instructor@parasol.edu.au', passwordHash, 'Sarah', 'Johnson', ['educator', 'observer']]
   );
 
+  // A course (so cohorts have something to attach to)
+  await query(
+    `INSERT INTO courses (id, organisation_id, site_id, name, start_date, end_date, max_learners, status)
+     VALUES ('course_als_2026_01', 'parasol-emt', 'site_sydney', 'ALS - June 2026 Batch A',
+             '2026-06-22T09:00:00Z', '2026-06-23T17:00:00Z', 24, 'active')
+     ON CONFLICT (id) DO NOTHING`
+  );
+
   // Sample rubric (ALS VF Adult — Team Lead)
   await query(
     `INSERT INTO rubrics (id, organisation_id, name, scenario_id, role, version, max_score)

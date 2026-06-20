@@ -7,6 +7,7 @@ import { usePersist } from '@/hooks/usePersist';
 import { useSync } from '@/hooks/useSync';
 import { useRealtimeStore } from '@/stores/realtimeStore';
 import { toast } from '@/stores/toastStore';
+import { coursesApi, learnersApi } from '@/services/data';
 
 function LiveActivity() {
   const { connection, events } = useRealtimeStore();
@@ -154,6 +155,28 @@ function OfflineSelfTest() {
 
 function DashboardContent() {
   const { user } = useAuth();
+  const [stats, setStats] = useState({ courses: '—', learners: '—', pending: '—' });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [c, l] = await Promise.all([coursesApi.list(), learnersApi.list({ limit: 1 })]);
+        setStats((s) => ({
+          ...s,
+          courses: c.courses.filter((x) => x.status === 'active').length,
+          learners: l.total,
+        }));
+      } catch {
+        // leave placeholders
+      }
+    })();
+  }, []);
+
+  const cards = [
+    { label: 'Active Courses', value: stats.courses },
+    { label: 'Pending Scores', value: stats.pending },
+    { label: 'Learners', value: stats.learners },
+  ];
 
   return (
     <>
@@ -163,10 +186,10 @@ function DashboardContent() {
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {['Active Courses', 'Pending Scores', 'Learners'].map((label) => (
-          <div key={label} className="rounded-lg border border-neutral-200 bg-white p-5">
-            <p className="text-sm text-neutral-500">{label}</p>
-            <p className="mt-2 text-2xl font-semibold text-neutral-900">—</p>
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-lg border border-neutral-200 bg-white p-5">
+            <p className="text-sm text-neutral-500">{c.label}</p>
+            <p className="mt-2 text-2xl font-semibold text-neutral-900">{c.value}</p>
           </div>
         ))}
       </div>

@@ -2,13 +2,20 @@
 
 **Last updated:** 2026-06-20 (Week 1, Day 1-3 done)
 
-## Status: Week 4 COMPLETE + verified
+## Status: Week 6 COMPLETE + verified
 
-Weeks 1-4 done: scaffold + DB + auth + offline storage + auth state/app shell + offline→cloud sync + **real-time (WebSocket) + error handling**. All working, tests green, verified in browser.
+Weeks 1-6 done. Foundation (1-4) + first features: **Week 5 student management** (CSV/manual import, searchable list) + **Week 6 cohorts + QR**. All working, tests green, verified in browser.
 
 ## Tests
-- Backend: `cd backend && npm test` — **15 passing** (auth 9 + sync 4 + realtime 2). Needs Postgres running.
+- Backend: `cd backend && npm test` — **26 passing** (auth 9 + sync 4 + realtime 2 + learners 6 + cohorts 5). Needs Postgres running.
 - Frontend: `cd frontend && npm test` — 2 passing (Jest+RTL: login renders, validation).
+
+## Routes (live)
+- Auth: `/api/auth/*` · Sync: `/api/sync` · WS: `/ws`
+- Learners: `GET/POST /api/organisations/:org/learners` (single+batch, search, pagination)
+- Courses: `GET /api/organisations/:org/courses`
+- Cohorts: `POST/GET /api/courses/:course/cohorts`, `GET /api/cohorts/:id`
+- Frontend pages: `/dashboard` `/students` `/cohorts` `/cohorts/[id]` (Sessions/Reports still "Soon")
 
 ## Database
 - PostgreSQL 14 in Docker container `parasol-postgres` (port 5432).
@@ -106,6 +113,21 @@ Dev login: `instructor@parasol.edu.au` / `password`
 
 **VERIFIED (Week 4):** Browser dashboard showed Live activity "(connected)"; POSTed a sync as a second client via PowerShell → browser's Live activity updated live to "1 event(s) synced by instructor@parasol.edu.au" with no refresh. Backend 15/15, frontend 2/2.
 
+**Week 5 (student management):**
+- Backend `learnersController.js` + `routes/organisations.js`: create (single + `{data:[]}` batch, validation, dedupe via ON CONFLICT, row-level failures), list (search ILIKE, pagination). Org-scoped via JWT (403 on mismatch). Broadcasts `learners.created`.
+- Frontend `services/data.js` (learnersApi/coursesApi/cohortsApi + `parseCsv`). `/students` page: searchable table + "Add students" (manual multi-row + CSV upload with per-row validation/preview). Dashboard stat cards now real (Active Courses, Learners).
+- Sidebar: Students + Cohorts now active (were "Soon").
+- Tests `learners.test.js` (6).
+
+**Week 6 (cohorts + QR):**
+- Backend `coursesController.js` (list) + `cohortsController.js` (create cohort + link learners + `COHORT_<id>` QR token, get detail w/ roster, list per course) + `routes/cohorts.js`. Seeder adds `course_als_2026_01`. Broadcasts `cohort.created`.
+- Frontend `/cohorts` (course dropdown, create with learner multiselect, list) + `/cohorts/[id]` (QR rendered client-side via `qrcode` lib to data-URL `<img>`, roster, Print poster via `window.print()`).
+- Tests `cohorts.test.js` (5).
+
+**VERIFIED (Week 5-6):** Browser — Students list showed 6→7 after manual import (Grace Hopper landed via backend→DB→refresh); created cohort "Demo Batch A" with 2 learners; cohort detail rendered a real QR data-image (token `COHORT_cohort_...`) + 2-person roster + print button. Backend 26/26.
+
+**Harness note:** `preview_screenshot` hangs on ALL authed pages (AppShell → Header → SyncBadge → useSync → sql.js init). Verify via `preview_snapshot` / `preview_eval` DOM checks instead.
+
 ## VERIFIED
 - GET /api/health → 200
 - DB login good creds → JWT + user pulled from Postgres (Sarah Johnson / educator,observer).
@@ -113,13 +135,13 @@ Dev login: `instructor@parasol.edu.au` / `password`
 - Browser (Day 1): login form → dashboard.
 - DB: 15 tables, seeded rows confirmed (1 user, 2 learners, 2 sites, 1 rubric, 3 criteria).
 
-## PENDING (next — Week 5)
-- **Week 5: student management** — CSV import + manual entry UI; backend `POST/GET /organisations/{org}/learners` (single + batch, validation, dedupe, pagination); make the Students page real (currently "Soon").
-- This is the first feature week — wires real data into the UI (dashboard stat cards, Students list).
+## PENDING (next — Week 7)
+- **Week 7: roster & QR check-in** — QR scanner component (camera), session roster with live check-in status, manual check-in fallback, session start flow (freeze roster). Backend: `POST /sessions/:id/participants/checkin`, `GET /sessions/:id/roster`, `POST /sessions/:id/start`. (Sessions table already exists.)
 - Conflict *resolution* UI (conflicts surfaced, not yet resolvable).
 - WebSocket polling fallback not implemented (reconnect works; long-poll fallback deferred).
 - E2E tests (Playwright) — not started.
 - Harden `cryptography.js` passphrase (see SECURITY follow-up above).
+- Frontend tests cover only login so far — add coverage for students/cohorts pages.
 - **De-branding follow-up (optional):** repo name is neutral, but code still contains "PARASOL EMT" (login page title, seed data, db name `parasol_ems`, container `parasol-postgres`). Private repo mitigates. Full scrub = rename db/container + replace UI/seed strings if they ever want zero references.
 
 ## BUGS

@@ -4,6 +4,8 @@ import morgan from 'morgan';
 import { config } from './config/environment.js';
 import authRouter from './routes/auth.js';
 import syncRouter from './routes/sync.js';
+import organisationsRouter from './routes/organisations.js';
+import cohortsRouter from './routes/cohorts.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // Express app, no listener — imported by server.js (runtime) and tests (supertest).
@@ -25,6 +27,8 @@ export function createApp() {
 
   app.use('/api/auth', authRouter);
   app.use('/api/sync', syncRouter);
+  app.use('/api/organisations', organisationsRouter);
+  app.use('/api', cohortsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

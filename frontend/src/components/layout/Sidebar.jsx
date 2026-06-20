@@ -7,13 +7,15 @@ import Link from 'next/link';
 const icons = {
   dashboard: 'M3 12l9-9 9 9M5 10v10h14V10',
   students: 'M16 11a4 4 0 10-8 0 4 4 0 008 0zM4 20a8 8 0 0116 0',
+  cohorts: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4 0M17 7a3 3 0 11-2 0',
   sessions: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
   reports: 'M9 17v-6h6v6M4 4h16v16H4z',
 };
 
 const nav = [
   { href: '/dashboard', label: 'Dashboard', icon: 'dashboard', ready: true },
-  { href: '/students', label: 'Students', icon: 'students', ready: false },
+  { href: '/students', label: 'Students', icon: 'students', ready: true },
+  { href: '/cohorts', label: 'Cohorts', icon: 'cohorts', ready: true },
   { href: '/sessions', label: 'Sessions', icon: 'sessions', ready: false },
   { href: '/reports', label: 'Reports', icon: 'reports', ready: false },
 ];
