@@ -26,8 +26,16 @@ function SessionsContent() {
 
   function handleScan(code) {
     setScanning(false);
-    if (code.startsWith('SESSION_')) router.push(`/sessions/${code.slice('SESSION_'.length)}`);
-    else if (code.startsWith('COHORT_')) router.push(`/cohorts/${code.slice('COHORT_'.length)}`);
+    let target = null;
+    if (/^https?:\/\//i.test(code)) {
+      // QR posters encode a full URL (so a phone's native camera works too).
+      try { target = new URL(code).pathname; } catch { /* not a URL */ }
+    } else if (code.startsWith('SESSION_')) {
+      target = `/sessions/${code.slice('SESSION_'.length)}`;
+    } else if (code.startsWith('COHORT_')) {
+      target = `/cohorts/${code.slice('COHORT_'.length)}`;
+    }
+    if (target && /^\/(sessions|cohorts)\/[^/]+$/.test(target)) router.push(target);
     else toast.error(`Unrecognised code: ${code}`);
   }
 

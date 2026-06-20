@@ -3,15 +3,13 @@
 @tailwind utilities;
 
 :root {
+  /* App is light-only: tell the browser so native form controls (inputs,
+     selects) render dark text on light backgrounds even when the device is in
+     dark mode. Without this, dark-mode browsers showed white text in our white
+     inputs. */
+  color-scheme: light;
   --background: #ffffff;
   --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {

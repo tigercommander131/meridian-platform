@@ -11,6 +11,7 @@ function CohortDetail() {
   const { id } = useParams();
   const [cohort, setCohort] = useState(null);
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const [checkinUrl, setCheckinUrl] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -18,9 +19,11 @@ function CohortDetail() {
       try {
         const c = await cohortsApi.get(id);
         setCohort(c);
-        if (c.qrCode) {
-          setQrDataUrl(await QRCode.toDataURL(c.qrCode, { width: 240, margin: 1 }));
-        }
+        // Encode a full URL (not the bare token) so a phone's native camera
+        // opens the cohort directly; the in-app scanner also understands URLs.
+        const url = `${window.location.origin}/cohorts/${id}`;
+        setCheckinUrl(url);
+        setQrDataUrl(await QRCode.toDataURL(url, { width: 240, margin: 1 }));
       } catch (e) {
         setError(e.message);
       }
@@ -50,7 +53,8 @@ function CohortDetail() {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={qrDataUrl} alt="Cohort check-in QR" className="mx-auto mt-3" width={240} height={240} />
           )}
-          <p className="mt-2 break-all text-xs text-neutral-400">{cohort.qrCode}</p>
+          <p className="mt-3 text-xs text-neutral-500">Scan with any phone camera, or the in-app scanner.</p>
+          <p className="mt-1 break-all text-xs text-neutral-400">{checkinUrl}</p>
         </div>
 
         <div className="rounded-lg border border-neutral-200 bg-white p-5">
