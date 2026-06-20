@@ -12,6 +12,9 @@ frontend/.next/
 frontend/out/
 frontend/build/
 
+# Generated at predev/prebuild from node_modules (see copy-wasm script)
+frontend/public/sql-wasm.wasm
+
 # Logs
 *.log
 npm-debug.log*
