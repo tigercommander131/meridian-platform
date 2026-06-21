@@ -101,14 +101,6 @@ async function seedOrg({ prefix, orgId, orgName, accent, regions, tagline }) {
     }
   }
 
-  // Emma mid-IC1, mentored by Sarah.
-  await query(
-    `INSERT INTO ic_progress (id, instructor_id, stage, course_id, mentor_id, notes)
-     VALUES ($1, $2, 'IC1', $3, $4, 'Strong on debriefing; confidence building.')
-     ON CONFLICT (id) DO NOTHING`,
-    [P('ic_emma'), P('instr_emma'), P('course_c1'), P('instr_sarah')]
-  );
-
   for (const [key, name, ctype, region, students, capacity, status, offset] of COURSES) {
     await query(
       `INSERT INTO courses (id, organisation_id, name, accreditation_org_id, course_type_id, region, capacity, confirmed_students, status, start_date)
@@ -126,6 +118,14 @@ async function seedOrg({ prefix, orgId, orgName, accent, regions, tagline }) {
       [P(`course_${ck}`), P(`instr_${crewKey}`), role, inv]
     );
   }
+
+  // Emma mid-IC1, mentored by Sarah (after courses exist — FK on course_id).
+  await query(
+    `INSERT INTO ic_progress (id, instructor_id, stage, course_id, mentor_id, notes)
+     VALUES ($1, $2, 'IC1', $3, $4, 'Strong on debriefing; confidence building.')
+     ON CONFLICT (id) DO NOTHING`,
+    [P('ic_emma'), P('instr_emma'), P('course_c1'), P('instr_sarah')]
+  );
 }
 
 async function seed() {
