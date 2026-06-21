@@ -6,24 +6,25 @@ import { LogoMark } from '@/components/brand/Logo';
 // Centered, branded shell shared by /login and /signup.
 export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-neutral-50 px-4">
-      {/* subtle teal wash, top */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-teal-50 to-transparent" />
+    <div className="relative min-h-screen overflow-hidden px-4" style={{ background: 'var(--bg)' }}>
+      {/* subtle teal wash + dotted grid, top */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-teal-50 to-transparent" />
+      <div className="bg-grid pointer-events-none absolute inset-0 opacity-60" />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center py-12">
         <div className="mb-8 flex flex-col items-center text-center">
           <LogoMark className="h-12 w-12" />
-          <h1 className="mt-4 text-xl font-semibold tracking-tight text-neutral-900">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>}
+          <h1 className="mt-4 text-xl font-semibold tracking-tight text-[var(--ink)]">{title}</h1>
+          {subtitle && <p className="mt-1 text-sm text-[var(--ink-2)]">{subtitle}</p>}
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-[var(--line)] bg-white p-6 shadow-soft">
           {children}
         </div>
 
-        {footer && <div className="mt-5 text-center text-sm text-neutral-500">{footer}</div>}
+        {footer && <div className="mt-5 text-center text-sm text-[var(--ink-2)]">{footer}</div>}
 
-        <p className="mt-8 text-center text-xs text-neutral-400">
+        <p className="mt-8 text-center text-xs text-[var(--ink-3)]">
           CTOP · Clinical Training Operations Platform
         </p>
       </div>

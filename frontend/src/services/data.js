@@ -43,7 +43,14 @@ export const instructorsApi = {
   },
   create(record) { return api.post(`/organisations/${orgId()}/instructors`, record); },
   get(id) { return api.get(`/instructors/${id}`); },
+  update(id, payload) { return api.put(`/instructors/${id}`, payload); },
   addCredential(id, payload) { return api.post(`/instructors/${id}/credentials`, payload); },
+  // Availability (rostering).
+  listAvailability(id) { return api.get(`/instructors/${id}/availability`); },
+  setAvailability(id, payload) { return api.post(`/instructors/${id}/availability`, payload); },
+  removeAvailability(id, date) { return api.del(`/instructors/${id}/availability/${date}`); },
+  // IC1 / IC2 pathway.
+  addIcProgress(id, payload) { return api.post(`/instructors/${id}/ic-progress`, payload); },
 };
 
 export const coursesApi = {
@@ -60,6 +67,14 @@ export const staffingApi = {
   get(courseId) { return api.get(`/courses/${courseId}/staffing`); },
   assign(courseId, payload) { return api.post(`/courses/${courseId}/staffing`, payload); },
   remove(courseId, staffingId) { return api.del(`/courses/${courseId}/staffing/${staffingId}`); },
+  candidates(courseId, role) { return api.get(`/courses/${courseId}/staffing/candidates?role=${role}`); },
+  invite(courseId, staffingId, payload = {}) { return api.post(`/courses/${courseId}/staffing/${staffingId}/invite`, payload); },
+};
+
+// Public invitation accept/decline (no auth required).
+export const invitationsApi = {
+  get(token) { return api.get(`/invitations/${token}`); },
+  respond(token, payload) { return api.post(`/invitations/${token}/respond`, payload); },
 };
 
 export const dashboardApi = {
@@ -77,19 +92,56 @@ export const STAFF_ROLES = [
 ];
 export const roleLabel = (v) => STAFF_ROLES.find((r) => r.value === v)?.label || v;
 
-// Course / compliance status display (neutral + teal accent; risk = amber/rose).
-export const STATUS_STYLE = {
-  draft: 'bg-neutral-100 text-neutral-600',
-  planning: 'bg-neutral-100 text-neutral-600',
-  staffing_risk: 'bg-amber-50 text-amber-700',
-  compliance_risk: 'bg-rose-50 text-rose-700',
-  viability_risk: 'bg-amber-50 text-amber-700',
-  ready: 'bg-teal-50 text-teal-700',
-  delivered: 'bg-neutral-900 text-white',
-  closed: 'bg-neutral-200 text-neutral-500',
-  cancelled: 'bg-neutral-200 text-neutral-500',
+// Course / compliance status → Badge tone (neutral + teal; risk = amber/rose).
+export const STATUS_TONE = {
+  draft: 'neutral',
+  planning: 'neutral',
+  staffing_risk: 'amber',
+  compliance_risk: 'rose',
+  viability_risk: 'amber',
+  ready: 'teal',
+  delivered: 'dark',
+  closed: 'neutral',
+  cancelled: 'neutral',
 };
+export const statusTone = (s) => STATUS_TONE[s] || 'neutral';
 export const statusLabel = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+// Escalation tiers for staffing suggestions.
+export const TIER_META = {
+  local: { label: 'Local', tone: 'teal', hint: 'Same region' },
+  regional: { label: 'Regional', tone: 'blue', hint: 'Other region' },
+  emergency: { label: 'Emergency', tone: 'amber', hint: 'Candidate / last resort' },
+};
+
+// Availability badge meta.
+export const AVAIL_META = {
+  available: { label: 'Available', tone: 'teal' },
+  unavailable: { label: 'Unavailable', tone: 'rose' },
+  tentative: { label: 'Tentative', tone: 'amber' },
+  unknown: { label: 'Unknown', tone: 'neutral' },
+};
+
+// Invitation status badge meta.
+export const INVITE_META = {
+  invited: { label: 'Invited', tone: 'blue' },
+  accepted: { label: 'Accepted', tone: 'teal' },
+  confirmed: { label: 'Confirmed', tone: 'teal' },
+  declined: { label: 'Declined', tone: 'rose' },
+  no_response: { label: 'No response', tone: 'amber' },
+};
+
+export const IC_OUTCOME_META = {
+  passed: { label: 'Passed', tone: 'teal' },
+  remediation: { label: 'Remediation', tone: 'amber' },
+  not_suitable: { label: 'Not suitable', tone: 'rose' },
+  deferred: { label: 'Deferred', tone: 'neutral' },
+};
+
+export function fmtDate(d, opts = { day: 'numeric', month: 'short', year: 'numeric' }) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-AU', opts);
+}
 
 // Minimal CSV parser for the students import (header row + comma values).
 export function parseCsv(text) {

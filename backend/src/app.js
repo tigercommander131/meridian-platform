@@ -6,6 +6,7 @@ import { config } from './config/environment.js';
 import authRouter from './routes/auth.js';
 import organisationsRouter from './routes/organisations.js';
 import ctopRouter from './routes/ctop.js';
+import { getInvitation, respondInvitation } from './controllers/invitationsController.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // Express app, no listener — imported by server.js (runtime) and tests (supertest).
@@ -36,6 +37,10 @@ export function createApp() {
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString(), env: config.nodeEnv });
   });
+
+  // Public invitation accept/decline (no auth — tokenised link).
+  app.get('/api/invitations/:token', getInvitation);
+  app.post('/api/invitations/:token/respond', respondInvitation);
 
   app.use('/api/auth', authRouter);
   app.use('/api/organisations', organisationsRouter);

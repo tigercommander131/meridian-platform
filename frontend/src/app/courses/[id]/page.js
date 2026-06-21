@@ -4,28 +4,152 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
-import { coursesApi, staffingApi, instructorsApi, STAFF_ROLES, roleLabel, STATUS_STYLE, statusLabel } from '@/services/data';
+import StatusBadge from '@/components/ui/StatusBadge';
+import ComplianceMeter from '@/components/ui/ComplianceMeter';
+import { Card, CardHeader, Button, Badge, Field, Input, Select, Avatar, Icon, Spinner } from '@/components/ui/kit';
+import {
+  coursesApi, staffingApi, STAFF_ROLES, roleLabel, fmtDate,
+  TIER_META, AVAIL_META, INVITE_META,
+} from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
 function ComplianceCard({ compliance }) {
   if (!compliance) return null;
   const ok = compliance.status === 'ready';
   return (
-    <div className={`rounded-xl border p-5 ${ok ? 'border-teal-200 bg-teal-50/40' : 'border-amber-200 bg-amber-50/40'}`}>
+    <Card className={ok ? 'border-teal-200 bg-teal-50/30' : compliance.status === 'compliance_risk' ? 'border-rose-200 bg-rose-50/20' : ''}>
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-neutral-800">Compliance</p>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[compliance.status] || ''}`}>{statusLabel(compliance.status)}</span>
+        <p className="text-sm font-semibold text-[var(--ink)]">Compliance</p>
+        <StatusBadge status={compliance.status} />
       </div>
-      <ul className="mt-3 space-y-1 text-sm text-neutral-700">
-        {compliance.explanation.map((line, i) => <li key={i}>{line}</li>)}
+      <p className="mt-1 text-xs text-[var(--ink-3)]">{compliance.groups} group{compliance.groups === 1 ? '' : 's'} required</p>
+
+      <div className="mt-4"><ComplianceMeter compliance={compliance} /></div>
+
+      <ul className="mt-4 space-y-1.5 border-t border-[var(--line)] pt-3">
+        {compliance.explanation.map((line, i) => (
+          <li key={i} className="flex items-start gap-2 text-xs text-[var(--ink-2)]">
+            <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-[var(--ink-3)]" />{line}
+          </li>
+        ))}
       </ul>
-      <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-neutral-500">
-        <span>Groups: {compliance.groups}</span>
-        <span>Instructors: {compliance.assigned.instructors}/{compliance.required.instructors}</span>
-        <span>Course director: {compliance.assigned.course_director}/{compliance.required.course_director}</span>
-        <span>Medical lead: {compliance.assigned.medical_lead}/{compliance.required.medical_lead}</span>
-        {compliance.required.doctor > 0 && <span>Doctor: {compliance.assigned.doctor}/{compliance.required.doctor}</span>}
+    </Card>
+  );
+}
+
+function CandidateRow({ c, busy, onAssign }) {
+  const tier = TIER_META[c.tier] || TIER_META.regional;
+  const avail = AVAIL_META[c.availability] || AVAIL_META.unknown;
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-[var(--line)] bg-white p-3">
+      <Avatar name={c.name} />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-[var(--ink)]">{c.name}</p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-[var(--ink-3)]">
+          {c.region || 'No region'}{!c.eligible && <span className="text-amber-600">· not credentialed</span>}
+        </p>
       </div>
+      <Badge tone={avail.tone}>{avail.label}</Badge>
+      <Badge tone={tier.tone} title={tier.hint}>{tier.label}</Badge>
+      <Button size="sm" variant="secondary" disabled={busy} onClick={() => onAssign(c, false)}>Assign</Button>
+      <Button size="sm" disabled={busy || !c.email} title={c.email ? '' : 'No email on file'} onClick={() => onAssign(c, true)}>Assign + invite</Button>
+    </div>
+  );
+}
+
+function AssignPanel({ courseId, onChanged }) {
+  const [role, setRole] = useState('instructor');
+  const [candidates, setCandidates] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async (r) => {
+    setCandidates(null);
+    try { const res = await staffingApi.candidates(courseId, r); setCandidates(res.candidates); }
+    catch (e) { toast.error(e.message); setCandidates([]); }
+  }, [courseId]);
+
+  useEffect(() => { load(role); }, [role, load]);
+
+  async function assign(c, withInvite) {
+    setBusy(true);
+    try {
+      const r = await staffingApi.assign(courseId, { instructorId: c.instructorId, role });
+      const created = r.staffing.find((s) => s.instructorId === c.instructorId && s.role === role);
+      if (withInvite && created) {
+        const inv = await staffingApi.invite(courseId, created.id, { escalationTier: c.tier });
+        toast.success(inv.noEmail ? 'Assigned — no email on file, share link manually' : inv.emailSkipped ? 'Assigned — invite logged (email not configured)' : 'Assigned and invited');
+      } else {
+        toast.success(`${c.name} assigned as ${roleLabel(role)}`);
+      }
+      onChanged(r);
+      load(role);
+    } catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="rounded-xl bg-[var(--surface-2)] p-4">
+      <div className="flex items-center gap-2">
+        <Field label="Role to fill" className="flex-1">
+          <Select value={role} onChange={(e) => setRole(e.target.value)}>
+            {STAFF_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+          </Select>
+        </Field>
+      </div>
+      <p className="mt-3 text-xs text-[var(--ink-3)]">
+        Ranked by escalation: <span className="text-teal-700">local</span> → <span className="text-sky-700">regional</span> → <span className="text-amber-700">emergency</span>. Unavailable crew hidden.
+      </p>
+      <div className="mt-2 space-y-2">
+        {candidates === null ? (
+          <div className="flex items-center gap-2 py-4 text-sm text-[var(--ink-3)]"><Spinner className="h-4 w-4 text-teal-700" /> Finding eligible crew…</div>
+        ) : candidates.length === 0 ? (
+          <p className="py-4 text-sm text-[var(--ink-3)]">No eligible, available crew for this role. Add credentials or availability, or widen the search.</p>
+        ) : (
+          candidates.map((c) => <CandidateRow key={c.instructorId} c={c} busy={busy} onAssign={assign} />)
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StaffMember({ s, courseId, onChanged }) {
+  const [busy, setBusy] = useState(false);
+  const invite = INVITE_META[s.invitationStatus] || INVITE_META.invited;
+  const tier = s.escalationTier ? TIER_META[s.escalationTier] : null;
+
+  async function sendInvite() {
+    setBusy(true);
+    try {
+      const inv = await staffingApi.invite(courseId, s.id, {});
+      toast.success(inv.noEmail ? 'No email on file — copy the link to share' : inv.emailSkipped ? 'Invite logged (email not configured)' : s.invited ? 'Reminder sent' : 'Invitation sent');
+      const r = await staffingApi.get(courseId); onChanged(r);
+    } catch (e) { toast.error(e.message); } finally { setBusy(false); }
+  }
+
+  function copyLink() {
+    const url = `${window.location.origin}/invite/${s.inviteToken}`;
+    navigator.clipboard?.writeText(url);
+    toast.success('Invitation link copied');
+  }
+
+  async function remove() {
+    try { const r = await staffingApi.remove(courseId, s.id); onChanged(r); }
+    catch (e) { toast.error(e.message); }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2.5 py-3">
+      <Avatar name={s.instructorName} className="h-8 w-8 text-xs" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-[var(--ink)]">{s.instructorName}</p>
+        <p className="text-xs text-[var(--ink-3)]">{roleLabel(s.role)}{s.reminderCount > 0 ? ` · ${s.reminderCount} reminder${s.reminderCount === 1 ? '' : 's'}` : ''}</p>
+      </div>
+      {tier && <Badge tone={tier.tone}>{tier.label}</Badge>}
+      {s.invited && <Badge tone={invite.tone} dot>{invite.label}</Badge>}
+      {s.invited && s.invitationStatus !== 'declined' && (
+        <Button size="sm" variant="ghost" onClick={copyLink} title="Copy invite link"><Icon d="M10 13a5 5 0 007 0l2-2a5 5 0 00-7-7l-1 1M14 11a5 5 0 00-7 0l-2 2a5 5 0 007 7l1-1" className="h-4 w-4" /></Button>
+      )}
+      <Button size="sm" variant="secondary" disabled={busy} onClick={sendInvite}>{s.invited ? 'Resend' : 'Invite'}</Button>
+      <Button size="sm" variant="ghost" onClick={remove} className="text-[var(--ink-3)] hover:text-rose-600"><Icon d="M18 6L6 18M6 6l12 12" className="h-4 w-4" /></Button>
     </div>
   );
 }
@@ -35,115 +159,82 @@ function CourseDetail() {
   const [course, setCourse] = useState(null);
   const [staffing, setStaffing] = useState([]);
   const [compliance, setCompliance] = useState(null);
-  const [instructors, setInstructors] = useState([]);
-  const [pickInstr, setPickInstr] = useState('');
-  const [pickRole, setPickRole] = useState('instructor');
   const [students, setStudents] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [adding, setAdding] = useState(false);
 
-  const loadStaffing = useCallback(async () => {
-    const r = await staffingApi.get(id);
-    setStaffing(r.staffing);
-    setCompliance(r.compliance);
-  }, [id]);
+  const applyStaffing = useCallback((r) => { setStaffing(r.staffing); setCompliance(r.compliance); }, []);
+  const loadStaffing = useCallback(async () => { applyStaffing(await staffingApi.get(id)); }, [id, applyStaffing]);
 
   useEffect(() => {
     coursesApi.get(id).then((c) => { setCourse(c); setStudents(String(c.confirmedStudents ?? 0)); });
     loadStaffing();
-    instructorsApi.list().then((r) => setInstructors(r.instructors)).catch(() => {});
   }, [id, loadStaffing]);
-
-  async function assign() {
-    if (!pickInstr) return toast.error('Pick an instructor');
-    setBusy(true);
-    try {
-      const r = await staffingApi.assign(id, { instructorId: pickInstr, role: pickRole });
-      setStaffing(r.staffing); setCompliance(r.compliance); setPickInstr('');
-    } catch (e) { toast.error(e.message); } finally { setBusy(false); }
-  }
-
-  async function remove(staffingId) {
-    try {
-      const r = await staffingApi.remove(id, staffingId);
-      setStaffing(r.staffing); setCompliance(r.compliance);
-    } catch (e) { toast.error(e.message); }
-  }
 
   async function saveStudents() {
     const n = parseInt(students, 10);
     if (!Number.isInteger(n) || n < 0) return;
     try {
       const c = await coursesApi.update(id, { confirmedStudents: n });
-      setCourse(c);
-      await loadStaffing();
-      toast.success('Student count updated');
+      setCourse(c); await loadStaffing(); toast.success('Student count updated');
     } catch (e) { toast.error(e.message); }
   }
 
-  if (!course) return <p className="text-sm text-neutral-500">Loading…</p>;
+  if (!course) return <div className="flex items-center gap-2 text-sm text-[var(--ink-3)]"><Spinner className="h-4 w-4 text-teal-700" /> Loading…</div>;
+
+  const declined = staffing.filter((s) => s.invitationStatus === 'declined');
 
   return (
     <>
-      <Link href="/courses" className="text-sm text-teal-700 hover:underline">← Courses</Link>
-      <div className="mt-3 flex flex-wrap items-start justify-between gap-3 border-b border-neutral-200 pb-4">
+      <Link href="/courses" className="inline-flex items-center gap-1 text-sm text-teal-700 hover:underline">
+        <Icon d="M15 18l-6-6 6-6" className="h-4 w-4" /> Courses
+      </Link>
+      <div className="mt-3 flex flex-wrap items-start justify-between gap-3 border-b border-[var(--line)] pb-5">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-900">{course.name}</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {course.courseTypeName || 'No course type'}{course.startDate ? ` · ${new Date(course.startDate).toLocaleDateString()}` : ''}
+          <h1 className="text-2xl font-semibold tracking-tight text-[var(--ink)]">{course.name}</h1>
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[var(--ink-2)]">
+            {course.courseTypeName || 'No course type'}
+            {course.region && <><span className="text-[var(--ink-3)]">·</span> {course.region}</>}
+            {course.startDate && <><span className="text-[var(--ink-3)]">·</span> {fmtDate(course.startDate)}</>}
           </p>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLE[course.status] || ''}`}>{statusLabel(course.status)}</span>
+        <StatusBadge status={course.status} />
       </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-[20rem_1fr]">
         <div className="space-y-5">
           <ComplianceCard compliance={compliance} />
-
-          <div className="rounded-xl border border-neutral-200 bg-white p-5">
-            <p className="text-sm font-medium text-neutral-700">Confirmed students</p>
-            <div className="mt-2 flex items-center gap-2">
-              <input type="number" min="0" value={students} onChange={(e) => setStudents(e.target.value)}
-                className="w-28 rounded-md border border-neutral-300 px-3 py-1.5 text-sm" />
-              <button onClick={saveStudents} className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm text-neutral-700 hover:bg-neutral-100">Update</button>
-              <span className="text-xs text-neutral-400">drives the staffing calculation</span>
+          <Card>
+            <CardHeader title="Confirmed students" subtitle="Drives the staffing calculation" />
+            <div className="flex items-center gap-2">
+              <Input type="number" min="0" value={students} onChange={(e) => setStudents(e.target.value)} className="w-28" />
+              <Button variant="secondary" onClick={saveStudents}>Update</Button>
             </div>
-          </div>
+          </Card>
         </div>
 
-        <div className="rounded-xl border border-neutral-200 bg-white p-5">
-          <p className="text-sm font-medium text-neutral-700">Staffing</p>
+        <Card>
+          <CardHeader
+            title="Staffing"
+            subtitle="Assign crew, send invitations, track responses."
+            action={<Button size="sm" onClick={() => setAdding((v) => !v)}>{adding ? 'Done' : 'Add staff'}</Button>}
+          />
 
-          <div className="mt-3 flex flex-wrap items-end gap-2">
-            <div className="min-w-[10rem] flex-1">
-              <label className="text-xs text-neutral-500">Instructor</label>
-              <select value={pickInstr} onChange={(e) => setPickInstr(e.target.value)} className="mt-1 block w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
-                <option value="">Select…</option>
-                {instructors.map((i) => <option key={i.id} value={i.id}>{i.firstName} {i.lastName}{i.status === 'candidate' ? ' (candidate)' : ''}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-neutral-500">Role</label>
-              <select value={pickRole} onChange={(e) => setPickRole(e.target.value)} className="mt-1 block rounded-md border border-neutral-300 px-2 py-1.5 text-sm">
-                {STAFF_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </div>
-            <button onClick={assign} disabled={busy} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50">Assign</button>
-          </div>
+          {adding && <div className="mb-4"><AssignPanel courseId={id} onChanged={applyStaffing} /></div>}
 
-          <ul className="mt-4 divide-y divide-neutral-100">
-            {staffing.length === 0 ? (
-              <li className="py-2 text-sm text-neutral-400">No staff assigned yet.</li>
-            ) : staffing.map((s) => (
-              <li key={s.id} className="flex items-center justify-between py-2 text-sm">
-                <span className="text-neutral-800">{s.instructorName}</span>
-                <span className="flex items-center gap-3">
-                  <span className="rounded bg-neutral-100 px-2 py-0.5 text-xs text-neutral-600">{roleLabel(s.role)}</span>
-                  <button onClick={() => remove(s.id)} className="text-xs text-neutral-400 hover:text-rose-600">Remove</button>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+          {staffing.length === 0 ? (
+            <p className="py-6 text-center text-sm text-[var(--ink-3)]">No crew assigned yet. Use “Add staff” to staff this course.</p>
+          ) : (
+            <div className="divide-y divide-[var(--line)]">
+              {staffing.map((s) => <StaffMember key={s.id} s={s} courseId={id} onChanged={applyStaffing} />)}
+            </div>
+          )}
+
+          {declined.length > 0 && (
+            <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              {declined.length} declined — these don’t count toward compliance. Invite replacements above.
+            </p>
+          )}
+        </Card>
       </div>
     </>
   );

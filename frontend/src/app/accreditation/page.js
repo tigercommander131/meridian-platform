@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/ui/PageHeader';
+import { Card, CardHeader, Button, Badge, Field, Input, Select } from '@/components/ui/kit';
 import { accreditationApi } from '@/services/data';
 import { toast } from '@/stores/toastStore';
-
-const field = 'rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600';
 
 const DEFAULT_RULES = {
   groupSize: 6, instructorsPerGroup: 2, courseDirectorRequired: true, medicalLeadRequired: true,
@@ -24,7 +23,6 @@ function RuleEditor({ courseTypes }) {
     setVersions(r.ruleSets);
     setRules({ ...DEFAULT_RULES, ...(r.ruleSets[0]?.rules || {}) });
   }, []);
-
   useEffect(() => { if (courseTypeId) load(courseTypeId); }, [courseTypeId, load]);
 
   const num = (k) => (e) => setRules((s) => ({ ...s, [k]: parseInt(e.target.value, 10) || 0 }));
@@ -36,38 +34,35 @@ function RuleEditor({ courseTypes }) {
   }
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-5">
-      <p className="text-sm font-medium text-neutral-700">Staffing rules</p>
-      <p className="mt-0.5 text-xs text-neutral-500">Pick a course type, set its rules, save a new version. Existing courses keep using the version in force when assessed.</p>
+    <Card>
+      <CardHeader title="Staffing rules" subtitle="Pick a course type, set its rules, save a new version. Existing courses keep the version in force when assessed."
+        icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+        action={courseTypeId ? <Badge tone="neutral">{versions.length} version{versions.length === 1 ? '' : 's'}</Badge> : null} />
 
-      <select value={courseTypeId} onChange={(e) => setCourseTypeId(e.target.value)} className={`${field} mt-3 block w-full max-w-sm`}>
+      <Select value={courseTypeId} onChange={(e) => setCourseTypeId(e.target.value)} className="max-w-sm">
         <option value="">Select a course type…</option>
         {courseTypes.map((ct) => <option key={ct.id} value={ct.id}>{ct.accreditationName} — {ct.name}</option>)}
-      </select>
+      </Select>
 
       {courseTypeId && (
         <>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="text-sm text-neutral-700">Students per group
-              <input type="number" min="1" value={rules.groupSize} onChange={num('groupSize')} className={`${field} mt-1 block w-24`} /></label>
-            <label className="text-sm text-neutral-700">Instructors per group
-              <input type="number" min="1" value={rules.instructorsPerGroup} onChange={num('instructorsPerGroup')} className={`${field} mt-1 block w-24`} /></label>
-            <label className="text-sm text-neutral-700">Extra doctor when groups exceed
-              <input type="number" min="0" value={rules.extraDoctorWhenGroupsExceed} onChange={num('extraDoctorWhenGroupsExceed')} className={`${field} mt-1 block w-24`} /></label>
-            <div className="space-y-1.5 pt-1 text-sm text-neutral-700">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.courseDirectorRequired} onChange={bool('courseDirectorRequired')} /> Course director required</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.medicalLeadRequired} onChange={bool('medicalLeadRequired')} /> Medical lead required</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.courseDirectorCanBeMedicalLead} onChange={bool('courseDirectorCanBeMedicalLead')} /> Course director can be the medical lead</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.countICsAsInstructors} onChange={bool('countICsAsInstructors')} /> Count candidates as instructors</label>
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-4">
+              <Field label="Students per group"><Input type="number" min="1" value={rules.groupSize} onChange={num('groupSize')} className="w-28" /></Field>
+              <Field label="Instructors per group"><Input type="number" min="1" value={rules.instructorsPerGroup} onChange={num('instructorsPerGroup')} className="w-28" /></Field>
+              <Field label="Extra doctor when groups exceed"><Input type="number" min="0" value={rules.extraDoctorWhenGroupsExceed} onChange={num('extraDoctorWhenGroupsExceed')} className="w-28" /></Field>
+            </div>
+            <div className="space-y-2.5 rounded-xl bg-[var(--surface-2)] p-4 text-sm text-[var(--ink-2)]">
+              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.courseDirectorRequired} onChange={bool('courseDirectorRequired')} className="accent-teal-700" /> Course director required</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.medicalLeadRequired} onChange={bool('medicalLeadRequired')} className="accent-teal-700" /> Medical lead required</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.courseDirectorCanBeMedicalLead} onChange={bool('courseDirectorCanBeMedicalLead')} className="accent-teal-700" /> Course director can be the medical lead</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.countICsAsInstructors} onChange={bool('countICsAsInstructors')} className="accent-teal-700" /> Count candidates as instructors</label>
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-3">
-            <button onClick={save} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">Save new version</button>
-            <span className="text-xs text-neutral-400">{versions.length} version{versions.length === 1 ? '' : 's'} on record</span>
-          </div>
+          <Button onClick={save} className="mt-5">Save new version</Button>
         </>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -98,43 +93,43 @@ function AccreditationContent() {
     <>
       <PageHeader title="Accreditation & Rules" subtitle="Define accreditation bodies, course types, and the staffing rules CTOP enforces." />
 
-      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <div className="rounded-xl border border-neutral-200 bg-white p-5">
-          <p className="text-sm font-medium text-neutral-700">Accreditation bodies</p>
-          <ul className="mt-2 space-y-1 text-sm">
-            {accreditation.length === 0 ? <li className="text-neutral-400">None yet.</li>
-              : accreditation.map((a) => <li key={a.id} className="text-neutral-800"><span className="font-medium">{a.code}</span> — {a.name}</li>)}
+      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="Accreditation bodies" icon="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 7.7l5.4-.8z" />
+          <ul className="space-y-1.5 text-sm">
+            {accreditation.length === 0 ? <li className="text-[var(--ink-3)]">None yet.</li>
+              : accreditation.map((a) => <li key={a.id} className="flex items-center gap-2 text-[var(--ink-2)]"><Badge tone="teal">{a.code}</Badge> {a.name}</li>)}
           </ul>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <input value={aName} onChange={(e) => setAName(e.target.value)} placeholder="Name (e.g. Australian Resuscitation Council)" className={`${field} flex-1`} />
-            <input value={aCode} onChange={(e) => setACode(e.target.value)} placeholder="Code (ARC)" className={`${field} w-24`} />
-            <button onClick={addAccred} className="rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800">Add</button>
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            <Field label="Name" className="flex-1"><Input value={aName} onChange={(e) => setAName(e.target.value)} placeholder="Australian Resuscitation Council" /></Field>
+            <Field label="Code"><Input value={aCode} onChange={(e) => setACode(e.target.value)} placeholder="ARC" className="w-24" /></Field>
+            <Button onClick={addAccred}>Add</Button>
           </div>
-        </div>
+        </Card>
 
-        <div className="rounded-xl border border-neutral-200 bg-white p-5">
-          <p className="text-sm font-medium text-neutral-700">Course types</p>
-          <ul className="mt-2 space-y-1 text-sm">
-            {courseTypes.length === 0 ? <li className="text-neutral-400">None yet.</li>
-              : courseTypes.map((ct) => <li key={ct.id} className="text-neutral-800">{ct.accreditationName} — {ct.name}</li>)}
+        <Card>
+          <CardHeader title="Course types" icon="M4 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zM14 3v5h5" />
+          <ul className="space-y-1.5 text-sm">
+            {courseTypes.length === 0 ? <li className="text-[var(--ink-3)]">None yet.</li>
+              : courseTypes.map((ct) => <li key={ct.id} className="text-[var(--ink-2)]"><span className="text-[var(--ink-3)]">{ct.accreditationName} —</span> {ct.name}</li>)}
           </ul>
-          <div className="mt-3 space-y-2">
-            <select value={ctAccred} onChange={(e) => setCtAccred(e.target.value)} className={`${field} block w-full`}>
-              <option value="">Accreditation body…</option>
-              {accreditation.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
-            </select>
-            <div className="flex flex-wrap gap-2">
-              <input value={ctName} onChange={(e) => setCtName(e.target.value)} placeholder="Name (Advanced Life Support 2)" className={`${field} flex-1`} />
-              <input value={ctCode} onChange={(e) => setCtCode(e.target.value)} placeholder="Code (ALS2)" className={`${field} w-24`} />
-              <button onClick={addCourseType} className="rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800">Add</button>
+          <div className="mt-4 space-y-2">
+            <Field label="Accreditation body">
+              <Select value={ctAccred} onChange={(e) => setCtAccred(e.target.value)}>
+                <option value="">Select…</option>
+                {accreditation.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
+              </Select>
+            </Field>
+            <div className="flex flex-wrap items-end gap-2">
+              <Field label="Name" className="flex-1"><Input value={ctName} onChange={(e) => setCtName(e.target.value)} placeholder="Advanced Life Support 2" /></Field>
+              <Field label="Code"><Input value={ctCode} onChange={(e) => setCtCode(e.target.value)} placeholder="ALS2" className="w-24" /></Field>
+              <Button onClick={addCourseType}>Add</Button>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div className="mt-5">
-        <RuleEditor courseTypes={courseTypes} />
-      </div>
+      <div className="mt-5"><RuleEditor courseTypes={courseTypes} /></div>
     </>
   );
 }

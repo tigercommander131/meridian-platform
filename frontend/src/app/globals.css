@@ -3,23 +3,73 @@
 @tailwind utilities;
 
 :root {
-  /* App is light-only: tell the browser so native form controls (inputs,
-     selects) render dark text on light backgrounds even when the device is in
-     dark mode. Without this, dark-mode browsers showed white text in our white
-     inputs. */
+  /* Light-only: native form controls render dark-on-light even in OS dark mode. */
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
+
+  /* Surfaces & ink */
+  --bg: #f7f8f8;          /* app canvas */
+  --surface: #ffffff;     /* cards */
+  --surface-2: #f4f5f6;   /* sunken / inset */
+  --ink: #18181b;         /* primary text */
+  --ink-2: #52525b;       /* secondary text */
+  --ink-3: #8b8f97;       /* muted text */
+  --line: #e7e8ea;        /* hairline borders */
+  --line-2: #dcdee1;      /* stronger borders */
+
+  /* Accent — single teal, per design system (no purple). */
+  --accent: #0f766e;      /* teal-700 */
+  --accent-hover: #115e59;/* teal-800 */
+  --accent-soft: #f0fdfa; /* teal-50  */
+  --accent-ink: #0f766e;
+
+  --radius: 0.75rem;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px -2px rgba(16, 24, 40, 0.08), 0 2px 6px -2px rgba(16, 24, 40, 0.05);
+  --shadow-lg: 0 16px 40px -8px rgba(16, 24, 40, 0.16);
 }
+
+html { -webkit-text-size-adjust: 100%; }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/* Tighter, modern headings. */
+h1, h2, h3 { letter-spacing: -0.01em; }
+
+/* Inputs inherit the font + a consistent focus ring. */
+input, select, textarea, button { font-family: inherit; }
+
+/* Refined, unobtrusive scrollbars. */
+* { scrollbar-width: thin; scrollbar-color: #cdd0d4 transparent; }
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-thumb { background: #cdd0d4; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: #b3b7bd; background-clip: content-box; }
+
+::selection { background: #99f6e4; color: #134e4a; }
+
 @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  .text-balance { text-wrap: balance; }
+  .bg-grid {
+    background-image: radial-gradient(circle at 1px 1px, rgba(16,24,40,0.05) 1px, transparent 0);
+    background-size: 22px 22px;
   }
 }
+
+@layer components {
+  /* Shared form control — used across the app via the `.ctl` class. */
+  .ctl {
+    @apply w-full rounded-lg border border-[var(--line-2)] bg-white px-3 py-2 text-sm text-[var(--ink)]
+           outline-none transition-shadow placeholder:text-[var(--ink-3)]
+           focus:border-[var(--accent)] focus:ring-2 focus:ring-teal-600/15;
+  }
+  .lbl { @apply text-xs font-medium text-[var(--ink-2)]; }
+}
+
+@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.animate-in { animation: fade-in 0.25s ease both; }

@@ -71,12 +71,29 @@ async function seed() {
 
   // Unstaffed demo course (12 confirmed students → 2 groups → needs 4 instructors + CD + ML).
   await query(
-    `INSERT INTO courses (id, organisation_id, name, accreditation_org_id, course_type_id, venue_site_id, capacity, confirmed_students, status, start_date)
-     VALUES ('course_demo_als2', $1, 'ALS2 — Sydney (June)', 'accred_arc', 'ctype_als2', 'site_parasol_syd', 18, 12, 'compliance_risk', NOW() + INTERVAL '14 days')
-     ON CONFLICT (id) DO NOTHING`, [ORG]);
+    `INSERT INTO courses (id, organisation_id, name, accreditation_org_id, course_type_id, venue_site_id, region, capacity, confirmed_students, status, start_date)
+     VALUES ('course_demo_als2', $1, 'ALS2 — Sydney (June)', 'accred_arc', 'ctype_als2', 'site_parasol_syd', 'Sydney', 18, 12, 'compliance_risk', NOW() + INTERVAL '14 days')
+     ON CONFLICT (id) DO UPDATE SET region = EXCLUDED.region`, [ORG]);
+
+  // Availability on the demo course date — most Sydney crew free; Mark unavailable.
+  const availByInstr = { instr_1: 'available', instr_2: 'unavailable', instr_3: 'available', instr_4: 'available', instr_5: 'available', instr_6: 'available' };
+  for (const [id, status] of Object.entries(availByInstr)) {
+    await query(
+      `INSERT INTO instructor_availability (instructor_id, available_on, status)
+       VALUES ($1, (CURRENT_DATE + 14), $2)
+       ON CONFLICT (instructor_id, available_on) DO UPDATE SET status = EXCLUDED.status`,
+      [id, status]
+    );
+  }
+
+  // Emma (candidate) is mid-IC1, mentored by Sarah.
+  await query(
+    `INSERT INTO ic_progress (id, instructor_id, stage, course_id, mentor_id, notes)
+     VALUES ('ic_emma_1', 'instr_6', 'IC1', 'course_demo_als2', 'instr_1', 'Strong on debriefing; confidence building.')
+     ON CONFLICT (id) DO NOTHING`);
 
   console.log('✅ CTOP seed complete — org "parasol", login admin@parasol.example / password');
-  console.log('   ARC + RA, ALS2 rule set, 6 instructors, 1 unstaffed demo course (12 students).');
+  console.log('   ARC + RA, ALS2 rule set, 6 instructors (+availability), 1 IC1 candidate, 1 unstaffed demo course (12 students).');
   await getPool().end();
   process.exit(0);
 }

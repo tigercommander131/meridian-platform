@@ -10,6 +10,7 @@ import ToastContainer from '@/components/shared/Toast';
 import ErrorBoundary from '@/components/shared/ErrorBoundary';
 import Tour from '@/components/tour/Tour';
 import { TOUR_STEPS } from '@/components/tour/steps';
+import { Spinner } from '@/components/ui/kit';
 
 /**
  * Authenticated app frame. Guards the route (redirects to /login when not
@@ -20,19 +21,16 @@ export default function AppShell({ children }) {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Open the live connection for the whole authenticated app.
   useRealtime();
 
-  // Redirect to login once we know the user isn't authenticated (in an effect so
-  // we never call router during render).
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace('/login');
   }, [isLoading, isAuthenticated, router]);
 
   if (isLoading || !user || !isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
-        Loading…
+      <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-[var(--ink-3)]">
+        <Spinner className="h-4 w-4 text-teal-700" /> Loading…
       </div>
     );
   }
@@ -43,26 +41,26 @@ export default function AppShell({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-[var(--bg)]">
       <Header user={user} onLogout={handleLogout} onMenu={() => setMenuOpen((v) => !v)} />
 
-      <div className="flex">
+      <div className="mx-auto flex max-w-[1400px]">
         {/* Sidebar — fixed on md+, slide-over on mobile */}
-        <aside className="hidden w-56 shrink-0 border-r border-neutral-200 bg-white md:block">
-          <Sidebar />
+        <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-60 shrink-0 border-r border-[var(--line)] bg-white md:block">
+          <Sidebar user={user} />
         </aside>
 
         {menuOpen && (
-          <div className="fixed inset-0 z-20 md:hidden">
-            <div className="absolute inset-0 bg-black/20" onClick={() => setMenuOpen(false)} />
-            <aside className="absolute left-0 top-14 h-full w-56 border-r border-neutral-200 bg-white">
-              <Sidebar onNavigate={() => setMenuOpen(false)} />
+          <div className="fixed inset-0 z-30 md:hidden">
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
+            <aside className="absolute left-0 top-14 h-full w-64 border-r border-[var(--line)] bg-white shadow-pop">
+              <Sidebar user={user} onNavigate={() => setMenuOpen(false)} />
             </aside>
           </div>
         )}
 
-        <main className="min-w-0 flex-1 px-6 py-8">
-          <div className="mx-auto max-w-5xl">
+        <main className="min-w-0 flex-1 px-5 py-8 sm:px-8">
+          <div className="mx-auto max-w-5xl animate-in">
             <ErrorBoundary>{children}</ErrorBoundary>
           </div>
         </main>

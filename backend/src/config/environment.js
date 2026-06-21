@@ -12,4 +12,9 @@ export const config = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret',
   jwtExpiresIn: '1h',
   jwtRefreshExpiresIn: '7d',
+  // Messaging connector (Resend). Optional — falls back to console logging.
+  emailApiKey: process.env.EMAIL_API_KEY,
+  emailFrom: process.env.EMAIL_FROM,
+  // Public app URL used to build invitation accept/decline links.
+  appUrl: process.env.APP_URL || process.env.CORS_ORIGIN?.split(',')[0]?.trim() || 'http://localhost:3000',
 };

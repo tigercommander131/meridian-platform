@@ -5,18 +5,19 @@ import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
-import { coursesApi, accreditationApi, STATUS_STYLE, statusLabel } from '@/services/data';
+import StatusBadge from '@/components/ui/StatusBadge';
+import { Card, CardHeader, Button, Field, Input, Select, Skeleton, Icon } from '@/components/ui/kit';
+import { coursesApi, accreditationApi, fmtDate } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
-const field = 'mt-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600';
-
-function CreateCourse({ accreditation, onCreated }) {
+function CreateCourse({ accreditation, onCreated, onCancel }) {
   const [name, setName] = useState('');
   const [accreditationOrgId, setAccredId] = useState('');
   const [courseTypeId, setCourseTypeId] = useState('');
   const [courseTypes, setCourseTypes] = useState([]);
   const [confirmedStudents, setStudents] = useState('0');
   const [capacity, setCapacity] = useState('24');
+  const [region, setRegion] = useState('');
   const [startDate, setStart] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -35,54 +36,68 @@ function CreateCourse({ accreditation, onCreated }) {
         courseTypeId: courseTypeId || undefined,
         capacity: parseInt(capacity, 10) || undefined,
         confirmedStudents: parseInt(confirmedStudents, 10) || 0,
+        region: region.trim() || undefined,
         startDate: startDate || undefined,
       });
       toast.success(`Course "${name.trim()}" created`);
-      setName(''); setCourseTypeId(''); setStudents('0'); setStart('');
       onCreated();
     } catch (e) { toast.error(e.message); } finally { setBusy(false); }
   }
 
   return (
-    <div className="rounded-xl border border-neutral-200 bg-white p-5">
-      <p className="text-sm font-medium text-neutral-700">New course</p>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label className="text-xs text-neutral-500">Course name</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. ALS2 — Sydney (June)" className={field} />
-        </div>
-        <div>
-          <label className="text-xs text-neutral-500">Accreditation</label>
-          <select value={accreditationOrgId} onChange={(e) => setAccredId(e.target.value)} className={field}>
+    <Card className="animate-in">
+      <CardHeader title="New course" subtitle="CTOP checks staffing compliance as you go." icon="M4 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zM14 3v5h5" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Course name" className="sm:col-span-2">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. ALS2 — Sydney (June)" />
+        </Field>
+        <Field label="Accreditation">
+          <Select value={accreditationOrgId} onChange={(e) => setAccredId(e.target.value)}>
             <option value="">—</option>
             {accreditation.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-neutral-500">Course type</label>
-          <select value={courseTypeId} onChange={(e) => setCourseTypeId(e.target.value)} className={field} disabled={!accreditationOrgId}>
+          </Select>
+        </Field>
+        <Field label="Course type">
+          <Select value={courseTypeId} onChange={(e) => setCourseTypeId(e.target.value)} disabled={!accreditationOrgId}>
             <option value="">—</option>
             {courseTypes.map((ct) => <option key={ct.id} value={ct.id}>{ct.name}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-neutral-500">Confirmed students</label>
-          <input type="number" min="0" value={confirmedStudents} onChange={(e) => setStudents(e.target.value)} className={field} />
-        </div>
-        <div>
-          <label className="text-xs text-neutral-500">Capacity</label>
-          <input type="number" min="1" value={capacity} onChange={(e) => setCapacity(e.target.value)} className={field} />
-        </div>
-        <div>
-          <label className="text-xs text-neutral-500">Start date</label>
-          <input type="date" value={startDate} onChange={(e) => setStart(e.target.value)} className={field} />
-        </div>
+          </Select>
+        </Field>
+        <Field label="Confirmed students"><Input type="number" min="0" value={confirmedStudents} onChange={(e) => setStudents(e.target.value)} /></Field>
+        <Field label="Capacity"><Input type="number" min="1" value={capacity} onChange={(e) => setCapacity(e.target.value)} /></Field>
+        <Field label="Region" hint="Drives staffing escalation"><Input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="e.g. Sydney" /></Field>
+        <Field label="Start date"><Input type="date" value={startDate} onChange={(e) => setStart(e.target.value)} /></Field>
       </div>
-      <button onClick={submit} disabled={busy}
-        className="mt-4 rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50">
-        {busy ? 'Creating…' : 'Create course'}
-      </button>
-    </div>
+      <div className="mt-5 flex gap-2">
+        <Button onClick={submit} disabled={busy}>{busy ? 'Creating…' : 'Create course'}</Button>
+        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+      </div>
+    </Card>
+  );
+}
+
+function CourseCard({ c }) {
+  const fill = c.capacity ? Math.min(100, Math.round((c.confirmedStudents / c.capacity) * 100)) : 0;
+  return (
+    <Link href={`/courses/${c.id}`}
+      className="group rounded-2xl border border-[var(--line)] bg-white p-5 shadow-card transition-all hover:border-teal-300 hover:shadow-soft">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-semibold text-[var(--ink)]">{c.name}</p>
+        <StatusBadge status={c.status} className="shrink-0" />
+      </div>
+      <p className="mt-1 text-xs text-[var(--ink-3)]">{c.courseTypeName || 'No course type'}{c.startDate ? ` · ${fmtDate(c.startDate)}` : ''}</p>
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-xs text-[var(--ink-2)]">
+          <span>{c.confirmedStudents}{c.capacity ? ` / ${c.capacity}` : ''} students</span>
+          {c.capacity ? <span className="text-[var(--ink-3)]">{fill}% full</span> : null}
+        </div>
+        {c.capacity ? (
+          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-100">
+            <div className="h-full rounded-full bg-teal-500" style={{ width: `${fill}%` }} />
+          </div>
+        ) : null}
+      </div>
+    </Link>
   );
 }
 
@@ -105,42 +120,27 @@ function CoursesContent() {
     <>
       <PageHeader
         title="Courses"
-        subtitle="Plan and staff accredited courses. CTOP checks compliance as you go."
-        action={
-          <button onClick={() => setShowCreate((v) => !v)} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">
-            {showCreate ? 'Close' : 'New course'}
-          </button>
-        }
+        subtitle="Plan and staff accredited courses."
+        action={<Button onClick={() => setShowCreate((v) => !v)}>
+          <Icon d="M12 5v14M5 12h14" className="h-4 w-4" strokeWidth={2} /> New course
+        </Button>}
       />
 
-      {showCreate && (
-        <div className="mt-4">
-          <CreateCourse accreditation={accreditation} onCreated={() => { setShowCreate(false); load(); }} />
-        </div>
-      )}
+      {showCreate && <div className="mt-5"><CreateCourse accreditation={accreditation} onCancel={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} /></div>}
 
-      <div className="mt-5">
+      <div className="mt-6">
         {courses === null ? (
-          <p className="text-sm text-neutral-400">Loading…</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>
         ) : courses.length === 0 ? (
           <EmptyState
             icon="M4 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zM14 3v5h5"
             title="No courses yet"
             message="Create your first course to start staffing and compliance checks."
-            action={<button onClick={() => setShowCreate(true)} className="rounded-md bg-teal-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-800">New course</button>}
+            action={<Button onClick={() => setShowCreate(true)}>New course</Button>}
           />
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {courses.map((c) => (
-              <Link key={c.id} href={`/courses/${c.id}`}
-                className="rounded-xl border border-neutral-200 bg-white p-4 transition-colors hover:border-teal-300">
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold text-neutral-900">{c.name}</p>
-                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[c.status] || ''}`}>{statusLabel(c.status)}</span>
-                </div>
-                <p className="mt-1 text-xs text-neutral-500">{c.courseTypeName || '—'} · {c.confirmedStudents} students</p>
-              </Link>
-            ))}
+            {courses.map((c) => <CourseCard key={c.id} c={c} />)}
           </div>
         )}
       </div>
