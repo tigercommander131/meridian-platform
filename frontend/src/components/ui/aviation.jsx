@@ -44,7 +44,7 @@ export function Station({ code, sub, className, onBoard = false }) {
   return (
     <div className={cx('leading-none', className)}>
       <p className={cx('font-mono text-2xl font-bold tracking-tight', onBoard ? 'text-board-ink' : 'text-[var(--ink)]')}>{code}</p>
-      {sub && <p className={cx('mt-1 text-[11px]', onBoard ? 'text-board-ink/60' : 'text-[var(--ink-3)]')}>{sub}</p>}
+      {sub && <p className={cx('mt-1 text-[11px]', onBoard ? 'text-[var(--board-ink-2)]' : 'text-[var(--ink-3)]')}>{sub}</p>}
     </div>
   );
 }

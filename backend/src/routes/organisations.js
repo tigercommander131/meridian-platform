@@ -6,6 +6,7 @@ import { listInstructors, createInstructor } from '../controllers/instructorsCon
 import { opsDashboard } from '../controllers/staffingController.js';
 import { listUsers, createUser } from '../controllers/usersController.js';
 import { getOrganisation, updateOrganisation } from '../controllers/organisationsController.js';
+import { opsReport } from '../controllers/reportController.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 
 const WRITE = ['admin', 'organisation_admin', 'course_operations_manager', 'course_coordinator', 'educator'];
@@ -34,6 +35,9 @@ router.post('/:orgId/instructors', authenticate, requireRole(...WRITE), createIn
 
 // Operations dashboard (courses needing attention).
 router.get('/:orgId/dashboard', authenticate, opsDashboard);
+
+// AI operations report (findings + suggestions, optional Claude narrative).
+router.get('/:orgId/ops-report', authenticate, opsReport);
 
 // Organisation profile (settings).
 router.get('/:orgId/profile', authenticate, getOrganisation);

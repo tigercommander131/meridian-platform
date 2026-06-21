@@ -17,4 +17,6 @@ export const config = {
   emailFrom: process.env.EMAIL_FROM,
   // Public app URL used to build invitation accept/decline links.
   appUrl: process.env.APP_URL || process.env.CORS_ORIGIN?.split(',')[0]?.trim() || 'http://localhost:3000',
+  // Claude API key for the AI operations report (optional — deterministic fallback otherwise).
+  claudeApiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
 };

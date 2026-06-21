@@ -8,7 +8,7 @@ import ComplianceMeter from '@/components/ui/ComplianceMeter';
 import { Card, CardHeader, Button, Badge, Field, Input, Select, Avatar, Icon, Spinner } from '@/components/ui/kit';
 import { FlightStatus, Station, Lamp, Stamp } from '@/components/ui/aviation';
 import {
-  coursesApi, staffingApi, STAFF_ROLES, roleLabel, fmtDate, station,
+  coursesApi, staffingApi, STAFF_ROLES, roleLabel, fmtDate, fmtDateRange, station,
   TIER_META, AVAIL_META, INVITE_META,
 } from '@/services/data';
 import { toast } from '@/stores/toastStore';
@@ -209,9 +209,9 @@ function CourseDetail() {
             <Station code={station(course.region)} sub={course.region || 'Base TBD'} onBoard />
             <Icon d="M21 16v-2l-8-5V3.5a1.5 1.5 0 00-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L11 19v-5.5z" className="h-5 w-5 text-[var(--accent)]" strokeWidth={0} />
             <div>
-              <p className="font-mono text-xs tracking-widest text-board-ink/50">{course.courseTypeName || 'COURSE'}</p>
+              <p className="font-mono text-xs tracking-widest text-[var(--board-ink-2)]">{course.courseTypeName || 'COURSE'}</p>
               <h1 className="mt-0.5 text-xl font-semibold tracking-tight text-board-ink">{course.name}</h1>
-              <p className="mt-1 font-mono text-xs text-board-ink/60">{fmtDate(course.startDate, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}{course.capacity ? ` · ${course.confirmedStudents}/${course.capacity} PAX` : ''}</p>
+              <p className="mt-1 font-mono text-xs text-[var(--board-ink-2)]">{fmtDateRange(course.startDate, course.endDate)}{course.capacity ? ` · ${course.confirmedStudents}/${course.capacity} students` : ''}</p>
             </div>
           </div>
           <FlightStatus status={course.status} onBoard className="text-sm" />

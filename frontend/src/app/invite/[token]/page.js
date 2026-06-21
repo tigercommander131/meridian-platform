@@ -24,7 +24,7 @@ function Pass({ inv, children }) {
           <LogoMark className="h-7 w-7" />
           <div className="leading-tight">
             <p className="font-mono text-[11px] font-bold tracking-widest text-board-ink">CTOP · BOARDING PASS</p>
-            <p className="text-[10px] text-board-ink/50">Crew staffing invitation</p>
+            <p className="text-[10px] text-[var(--board-ink-2)]">Crew staffing invitation</p>
           </div>
         </div>
         <p className="font-mono text-sm font-bold tracking-wider text-[var(--accent)]">{inv.roleLabel?.toUpperCase().slice(0, 12)}</p>

@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
-import { Skeleton, Icon } from '@/components/ui/kit';
+import { Skeleton, Icon, Button } from '@/components/ui/kit';
 import { FlightStatus, Lamp } from '@/components/ui/aviation';
+import OpsReport from '@/components/ops/OpsReport';
 import { useAuth } from '@/hooks/useAuth';
-import { dashboardApi, fmtDate, flight, station } from '@/services/data';
+import { dashboardApi, fmtDate, fmtDateRange, flight, station } from '@/services/data';
 
 function useClock() {
   const [t, setT] = useState(null);
@@ -14,45 +15,49 @@ function useClock() {
   return t;
 }
 
-function relDays(d) {
-  if (!d) return '';
-  const days = Math.round((new Date(d) - new Date()) / 86400000);
-  if (days === 0) return 'today';
-  if (days > 0) return `in ${days}d`;
-  return `${-days}d ago`;
-}
+const GRID = 'grid-cols-[7rem_1fr_auto] sm:grid-cols-[6.5rem_7rem_8.5rem_4.5rem_4.5rem_4rem_7rem]';
+const RANK = { compliance_risk: 0, staffing_risk: 1, viability_risk: 2, planning: 3, ready: 4, delivered: 5 };
 
 function Tile({ label, value, lamp, hint }) {
   return (
     <div className="rounded-2xl border border-[var(--line)] bg-white p-4 shadow-card">
-      <div className="flex items-center gap-2">
-        {lamp && <Lamp kind={lamp} pulse />}
-        <p className="lbl">{label}</p>
-      </div>
+      <div className="flex items-center gap-2">{lamp && <Lamp kind={lamp} pulse />}<p className="lbl">{label}</p></div>
       <p className="mt-2 font-mono text-3xl font-bold tnum tracking-tight text-[var(--ink)]">{value}</p>
       {hint && <p className="mt-0.5 text-xs text-[var(--ink-3)]">{hint}</p>}
     </div>
   );
 }
 
-function BoardRow({ c }) {
-  const f = flight(c.compliance.status);
-  const short = c.crew && c.crew.assigned < c.crew.required;
-  const code = `${c.courseTypeCode || 'CRS'}·${station(c.region)}`;
+function CourseRow({ c }) {
+  const code = c.courseTypeCode || (c.courseType || 'Course');
+  const instrShort = c.crew && c.crew.instructors < c.crew.instructorsRequired;
+  const min = c.groups ? 4 * c.groups : null;
+  const studShort = min != null && c.confirmedStudents < min;
+  const wl = c.waitlistCount || 0;
   return (
     <Link href={`/courses/${c.id}`}
-      className="grid grid-cols-[8.5rem_1fr_auto] items-center gap-3 border-b border-[var(--board-line)] px-4 py-3 transition-colors hover:bg-[var(--board-2)] sm:grid-cols-[9rem_1fr_5rem_7rem_5rem_8rem]">
-      <span className="font-mono text-sm font-bold tracking-wide text-board-ink">{code}</span>
+      className={`grid ${GRID} items-center gap-3 border-b border-[var(--board-line)] px-4 py-3 transition-colors hover:bg-[var(--board-2)]`}>
+      {/* Course */}
       <span className="min-w-0">
-        <span className="block truncate text-sm text-board-ink">{c.name}</span>
-        <span className="block truncate text-[11px] text-board-ink/50 sm:hidden">{station(c.region)} · {fmtDate(c.startDate, { day: 'numeric', month: 'short' })} · crew {c.crew?.assigned}/{c.crew?.required}</span>
+        <span className="block font-mono text-sm font-bold text-board-ink">{code}</span>
+        {c.externalRef && <span className="block font-mono text-[10px] text-[var(--board-ink-2)]">{c.externalRef}</span>}
       </span>
-      <span className="hidden font-mono text-sm text-board-ink/70 sm:block">{station(c.region)}</span>
-      <span className="hidden font-mono text-sm text-board-ink/70 sm:block">
-        {fmtDate(c.startDate, { day: '2-digit', month: 'short' })}
-        <span className="block text-[10px] text-board-ink/40">{relDays(c.startDate)}</span>
+      {/* Location (+ mobile meta) */}
+      <span className="min-w-0">
+        <span className="block truncate text-sm text-board-ink">{c.region || c.name}</span>
+        <span className="block truncate text-[11px] text-[var(--board-ink-2)] sm:hidden">
+          {fmtDateRange(c.startDate, c.endDate)} · {c.confirmedStudents}/{c.capacity} stu · {c.crew?.instructors}/{c.crew?.instructorsRequired} inst{wl ? ` · WL ${wl}` : ''}
+        </span>
       </span>
-      <span className={`hidden font-mono text-sm tnum sm:block ${short ? 'text-[var(--lamp-warn)]' : 'text-board-ink/70'}`}>{c.crew?.assigned}/{c.crew?.required}</span>
+      {/* Date */}
+      <span className="hidden font-mono text-xs text-[var(--board-ink-2)] sm:block">{fmtDateRange(c.startDate, c.endDate)}</span>
+      {/* Instructors */}
+      <span className={`hidden font-mono text-sm tnum sm:block ${instrShort ? 'text-[var(--lamp-warn)]' : 'text-board-ink'}`}>{c.crew?.instructors}/{c.crew?.instructorsRequired}</span>
+      {/* Students */}
+      <span className={`hidden font-mono text-sm tnum sm:block ${studShort ? 'text-[var(--lamp-warn)]' : 'text-board-ink'}`}>{c.confirmedStudents}/{c.capacity}</span>
+      {/* Waitlist */}
+      <span className={`hidden font-mono text-sm tnum sm:block ${wl >= 6 ? 'text-[var(--lamp-warn)]' : wl > 0 ? 'text-board-ink' : 'text-[var(--board-ink-2)]'}`}>{wl}</span>
+      {/* Status */}
       <span className="justify-self-end sm:justify-self-start"><FlightStatus status={c.compliance.status} onBoard /></span>
     </Link>
   );
@@ -61,6 +66,7 @@ function BoardRow({ c }) {
 function DashboardContent() {
   const { user } = useAuth();
   const [courses, setCourses] = useState(null);
+  const [limit, setLimit] = useState(12);
   const clock = useClock();
 
   useEffect(() => { dashboardApi.get().then((r) => setCourses(r.courses)).catch(() => setCourses([])); }, []);
@@ -69,6 +75,8 @@ function DashboardContent() {
   const cleared = list.filter((c) => c.compliance.status === 'ready').length;
   const atRisk = list.filter((c) => ['compliance_risk', 'staffing_risk', 'viability_risk'].includes(c.compliance.status)).length;
   const gaps = list.reduce((n, c) => n + (c.crew ? Math.max(0, c.crew.required - c.crew.assigned) : 0), 0);
+  const sorted = [...list].sort((a, b) => (RANK[a.compliance.status] ?? 9) - (RANK[b.compliance.status] ?? 9));
+  const shown = sorted.slice(0, limit);
 
   return (
     <>
@@ -87,33 +95,45 @@ function DashboardContent() {
         <Tile label="Active" value={courses ? list.length : '—'} />
         <Tile label="Cleared" value={courses ? cleared : '—'} lamp="go" />
         <Tile label="At risk" value={courses ? atRisk : '—'} lamp={atRisk ? 'stop' : 'idle'} />
-        <Tile label="Crew gaps" value={courses ? gaps : '—'} lamp={gaps ? 'warn' : 'idle'} hint={gaps ? 'roles unfilled' : 'fully crewed'} />
+        <Tile label="Instructor gaps" value={courses ? gaps : '—'} lamp={gaps ? 'warn' : 'idle'} hint={gaps ? 'roles unfilled' : 'fully staffed'} />
       </div>
+
+      {/* AI operations report */}
+      <div className="mt-6"><OpsReport /></div>
 
       <div className="mt-7 overflow-hidden rounded-2xl border border-[var(--board-line)] bg-board board-grid shadow-soft">
         <div className="flex items-center justify-between border-b border-[var(--board-line)] px-4 py-3">
           <div className="flex items-center gap-2.5">
-            <Icon d={['M3 12h3l2-5 4 10 2-5h7']} className="h-5 w-5 text-[var(--accent)]" strokeWidth={2} />
-            <span className="font-mono text-sm font-bold tracking-widest text-board-ink">DEPARTURES</span>
+            <Icon d={['M4 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zM14 3v5h5']} className="h-5 w-5 text-[var(--accent)]" strokeWidth={2} />
+            <span className="font-mono text-sm font-bold tracking-widest text-board-ink">COURSES</span>
+            {courses && <span className="font-mono text-[11px] text-[var(--board-ink-2)]">{list.length}</span>}
           </div>
-          <div className="hidden items-center gap-3 font-mono text-[10px] text-board-ink/50 sm:flex">
+          <div className="hidden items-center gap-3 font-mono text-[10px] text-[var(--board-ink-2)] sm:flex">
             <span className="flex items-center gap-1"><Lamp kind="go" /> CLEARED</span>
             <span className="flex items-center gap-1"><Lamp kind="warn" /> WATCH</span>
             <span className="flex items-center gap-1"><Lamp kind="stop" /> AT RISK</span>
           </div>
         </div>
 
-        <div className="hidden grid-cols-[9rem_1fr_5rem_7rem_5rem_8rem] gap-3 border-b border-[var(--board-line)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-board-ink/40 sm:grid">
-          <span>Flight</span><span>Course</span><span>Route</span><span>Date</span><span>Crew</span><span>Status</span>
+        <div className={`hidden ${GRID} gap-3 border-b border-[var(--board-line)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--board-ink-2)] sm:grid`}>
+          <span>Course</span><span>Location</span><span>Date</span><span>Instructors</span><span>Students</span><span>Waitlist</span><span>Status</span>
         </div>
 
         {courses === null ? (
           <div className="space-y-px p-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full bg-white/5" />)}</div>
         ) : list.length === 0 ? (
-          <p className="px-4 py-10 text-center font-mono text-sm text-board-ink/50">NO SCHEDULED DEPARTURES — create a course to begin.</p>
+          <p className="px-4 py-10 text-center font-mono text-sm text-[var(--board-ink-2)]">NO COURSES — create one to begin.</p>
         ) : (
-          [...list].sort((a, b) => (flight(a.compliance.status).lamp === 'stop' ? -1 : 0) - (flight(b.compliance.status).lamp === 'stop' ? -1 : 0))
-            .map((c) => <BoardRow key={c.id} c={c} />)
+          shown.map((c) => <CourseRow key={c.id} c={c} />)
+        )}
+
+        {courses && list.length > 12 && (
+          <div className="flex items-center justify-center gap-2 px-4 py-3">
+            {limit < sorted.length && <button onClick={() => setLimit((n) => n + 25)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">SHOW MORE</button>}
+            {limit < sorted.length && <button onClick={() => setLimit(sorted.length)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">· SHOW ALL ·</button>}
+            {limit > 12 && <button onClick={() => setLimit(12)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">SHOW LESS</button>}
+            <span className="font-mono text-[10px] text-[var(--board-ink-2)]">showing {Math.min(limit, sorted.length)}/{sorted.length}</span>
+          </div>
         )}
       </div>
 

@@ -81,6 +81,10 @@ export const dashboardApi = {
   get() { return api.get(`/organisations/${orgId()}/dashboard`); },
 };
 
+export const reportApi = {
+  get() { return api.get(`/organisations/${orgId()}/ops-report`); },
+};
+
 export const orgApi = {
   get() { return api.get(`/organisations/${orgId()}/profile`); },
   update(payload) { return api.put(`/organisations/${orgId()}/profile`, payload); },
@@ -164,6 +168,17 @@ export const IC_OUTCOME_META = {
 export function fmtDate(d, opts = { day: 'numeric', month: 'short', year: 'numeric' }) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-AU', opts);
+}
+
+// "27 – 28 Jun 2026" for a multi-day course; single date otherwise.
+export function fmtDateRange(start, end) {
+  if (!start) return '—';
+  const s = new Date(start);
+  if (!end || new Date(end).toDateString() === s.toDateString()) return fmtDate(start);
+  const e = new Date(end);
+  const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+  if (sameMonth) return `${s.getDate()} – ${e.getDate()} ${e.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}`;
+  return `${fmtDate(start, { day: 'numeric', month: 'short' })} – ${fmtDate(end)}`;
 }
 
 // Minimal CSV parser for the students import (header row + comma values).

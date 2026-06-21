@@ -236,9 +236,14 @@ export async function opsDashboard(req, res, next) {
         region: c.region,
         capacity: c.capacity,
         startDate: c.start_date,
+        endDate: c.end_date,
+        durationDays: c.duration_days,
+        externalRef: c.external_ref,
         confirmedStudents: c.confirmed_students,
+        waitlistCount: c.waitlist_count,
+        groups: compliance.groups,
         status: c.status,
-        crew: { assigned: assignedTotal, required: requiredTotal, groups: compliance.groups },
+        crew: { assigned: assignedTotal, required: requiredTotal, groups: compliance.groups, instructors: compliance.assigned.instructors, instructorsRequired: compliance.required.instructors },
         compliance: { status: compliance.status, missing: compliance.missing, explanation: compliance.explanation },
       });
     }
