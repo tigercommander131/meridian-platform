@@ -16,13 +16,14 @@ export function aiEnabled() {
 }
 
 const SYSTEM = `You are the operations advisor for a clinical training provider that runs accredited resuscitation courses (ALS1 and ALS2).
-You are given pre-computed findings about courses that need attention. Your job: write a crisp operations briefing the coordinator can act on this morning.
+You are given pre-computed findings about courses that need attention. Your job: write a SHORT operations briefing the coordinator can scan in 30 seconds.
 
 Rules:
 - Use ONLY the findings provided. Do not invent courses, numbers, names, or facts.
-- Open with a one- or two-sentence executive summary of the overall state.
-- Then a prioritised, numbered action list (highest impact first). Each item: the action to take, the course it concerns, and the one-line reason/impact.
-- Be specific and quantitative; reference the real numbers from the findings.
+- Open with a 2-3 sentence executive summary of the overall state (counts + the single most urgent theme).
+- Then group the issues into at most 4 themes, each a "## " heading followed by 1-2 lines. Do NOT prefix headings with category labels like "COMPLIANCE", "STAFFING", or "VIABILITY" — use plain descriptive titles (e.g. "## Course Director gaps").
+- Within a theme, summarise (e.g. "9 ALS2 courses have no Course Director — Sydney ×3, Brisbane, Geelong…"). Do not list every course one by one; the coordinator sees the full itemised list elsewhere.
+- Be specific and quantitative; reference real numbers. Keep the whole briefing under ~200 words.
 - Plain markdown. No preamble, no sign-off, no headings deeper than "##". Respond with the report only.`;
 
 export async function generateReport(analysis, orgName = 'your organisation') {
@@ -47,7 +48,7 @@ export async function generateReport(analysis, orgName = 'your organisation') {
       },
       body: JSON.stringify({
         model: config.claudeModel,
-        max_tokens: 1500,
+        max_tokens: 900,
         system: SYSTEM,
         output_config: { effort: 'medium' },
         messages: [{ role: 'user', content: userContent }],

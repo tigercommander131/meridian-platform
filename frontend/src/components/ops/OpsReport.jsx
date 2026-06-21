@@ -1,17 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, Button, Badge, Spinner, Icon, cx } from '@/components/ui/kit';
-import { reportApi } from '@/services/data';
+import { reportApi, fmtDate } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
 const SEV = {
-  high: { tone: 'rose', label: 'High' },
-  medium: { tone: 'amber', label: 'Medium' },
-  low: { tone: 'blue', label: 'Low' },
+  high: { tone: 'rose', label: 'High', chip: 'bg-rose-50 text-rose-600' },
+  medium: { tone: 'amber', label: 'Medium', chip: 'bg-amber-50 text-amber-600' },
+  low: { tone: 'blue', label: 'Low', chip: 'bg-blue-50 text-blue-600' },
 };
+const sev = (s) => SEV[s] || SEV.low;
 
-// Tiny markdown-ish renderer: **bold**, ## heading, -/numbered list lines.
+// Icon per finding type (24x24 stroke paths) — gives each solution a glance-able marker.
+const TYPE_ICON = {
+  course_director: ['M12 14a4 4 0 100-8 4 4 0 000 8z', 'M8.5 13.5L7 21l5-3 5 3-1.5-7.5'],        // award = leadership role
+  medical_director: ['M12 21a9 9 0 100-18 9 9 0 000 18z', 'M12 8v8M8 12h8'],                       // medical cross
+  instructors: ['M9 11a4 4 0 100-8 4 4 0 000 8z', 'M2 21v-2a4 4 0 014-4h6a4 4 0 014 4v2', 'M16 3.2a4 4 0 010 7.6', 'M22 21v-2a4 4 0 00-3-3.9'], // people
+  underfilled: ['M22 17l-8.5-8.5-5 5L2 6', 'M16 17h6v-6'],                                          // trending down
+  waitlist: ['M12 21a9 9 0 100-18 9 9 0 000 18z', 'M12 7v5l3 2'],                                   // clock / queue
+  overcapacity: ['M10.3 4L2.3 18a2 2 0 001.7 3h16a2 2 0 001.7-3L13.7 4a2 2 0 00-3.4 0z', 'M12 9v4M12 17h.01'], // warning
+};
+const typeIcon = (t) => TYPE_ICON[t] || ['M12 21a9 9 0 100-18 9 9 0 000 18z', 'M12 8h.01M11 12h1v4h1'];
+
+// Time windows for the filter. days = null → all courses.
+const WINDOWS = [
+  { key: 'w1', label: '1 week', days: 7 },
+  { key: 'w2', label: '2 weeks', days: 14 },
+  { key: 'w4', label: '4 weeks', days: 28 },
+  { key: 'w6', label: '6 weeks', days: 42 },
+  { key: 'all', label: 'All', days: null },
+];
+
+// Strip shouty category prefixes the model sometimes prepends to headings.
+const stripCategory = (s) => s.replace(/^(compliance|staffing|viability|capacity|waitlist|viability risk)\s*[—–:-]\s*/i, '');
+
 function inline(text, key) {
   const parts = String(text).split(/(\*\*[^*]+\*\*)/g);
   return parts.map((p, i) =>
@@ -27,7 +50,7 @@ function Narrative({ text }) {
       {lines.map((ln, i) => {
         const t = ln.trim();
         if (!t) return null;
-        if (t.startsWith('## ')) return <p key={i} className="pt-1 text-sm font-semibold text-[var(--ink)]">{inline(t.slice(3), i)}</p>;
+        if (t.startsWith('## ')) return <p key={i} className="pt-1 text-sm font-semibold text-[var(--ink)]">{inline(stripCategory(t.slice(3)), i)}</p>;
         const li = t.match(/^(\d+\.|[-*])\s+(.*)$/);
         if (li) return (
           <div key={i} className="flex gap-2 pl-1"><span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" /><span>{inline(li[2], i)}</span></div>
@@ -51,14 +74,37 @@ export default function OpsReport() {
   const [data, setData] = useState(null);
   const [busy, setBusy] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [showBriefing, setShowBriefing] = useState(false);
+  const [win, setWin] = useState('all');
 
   async function run() {
     setBusy(true);
-    try { setData(await reportApi.get()); }
+    try { setData(await reportApi.get()); setShowAll(false); }
     catch (e) { toast.error(e.message); } finally { setBusy(false); }
   }
 
-  const findings = data?.findings || [];
+  const all = data?.findings || [];
+  const days = WINDOWS.find((w) => w.key === win)?.days ?? null;
+
+  const findings = useMemo(() => {
+    if (days == null) return all;
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const cutoff = start.getTime() + days * 86400000;
+    return all.filter((f) => {
+      if (!f.date) return false;                       // undated courses only show under "All"
+      const t = new Date(f.date).getTime();
+      return t >= start.getTime() && t <= cutoff;
+    });
+  }, [all, days]);
+
+  // Stat tiles follow the active filter so the numbers always match what's shown.
+  const stats = useMemo(() => ({
+    atRisk: new Set(findings.map((f) => f.courseId)).size,
+    underfilled: findings.filter((f) => f.type === 'underfilled').length,
+    waitlistAlerts: findings.filter((f) => f.type === 'waitlist').length,
+    staffingGaps: findings.filter((f) => ['instructors', 'course_director', 'medical_director'].includes(f.type)).length,
+  }), [findings]);
+
   const shown = showAll ? findings : findings.slice(0, 6);
   const ai = data?.source === 'ai';
 
@@ -71,7 +117,7 @@ export default function OpsReport() {
           </span>
           <div>
             <p className="text-sm font-semibold text-[var(--ink)]">AI operations report</p>
-            <p className="mt-0.5 text-xs text-[var(--ink-3)]">Scans every course for viability, waitlist, and staffing issues — and suggests fixes.</p>
+            <p className="mt-0.5 text-xs text-[var(--ink-3)]">Scans every course for viability, waitlist, and staffing issues — and suggests solutions.</p>
           </div>
         </div>
         {data
@@ -86,38 +132,98 @@ export default function OpsReport() {
             {!data.aiEnabled && <span className="text-[11px] text-[var(--ink-3)]">Set <code className="rounded bg-[var(--surface-2)] px-1">CLAUDE_API_KEY</code> on the API service for an AI-written briefing.</span>}
           </div>
 
+          {/* Time-window filter */}
+          <div className="mb-3 flex flex-wrap items-center gap-1.5">
+            <span className="mr-1 text-[11px] uppercase tracking-wide text-[var(--ink-3)]">Courses in</span>
+            {WINDOWS.map((w) => (
+              <button
+                key={w.key}
+                onClick={() => { setWin(w.key); setShowAll(false); }}
+                className={cx(
+                  'rounded-full px-2.5 py-1 text-xs font-medium transition',
+                  win === w.key
+                    ? 'bg-[var(--accent)] text-white'
+                    : 'bg-[var(--surface-2)] text-[var(--ink-2)] hover:text-[var(--ink)]'
+                )}
+              >
+                {w.label}
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat label="At risk" value={data.stats.atRisk} tone={data.stats.atRisk ? 'rose' : undefined} />
-            <Stat label="Under minimum" value={data.stats.underfilled} tone={data.stats.underfilled ? 'amber' : undefined} />
-            <Stat label="Waitlist alerts" value={data.stats.waitlistAlerts} tone={data.stats.waitlistAlerts ? 'amber' : undefined} />
-            <Stat label="Staffing gaps" value={data.stats.staffingGaps} tone={data.stats.staffingGaps ? 'rose' : undefined} />
+            <Stat label="At risk" value={stats.atRisk} tone={stats.atRisk ? 'rose' : undefined} />
+            <Stat label="Under minimum" value={stats.underfilled} tone={stats.underfilled ? 'amber' : undefined} />
+            <Stat label="Waitlist alerts" value={stats.waitlistAlerts} tone={stats.waitlistAlerts ? 'amber' : undefined} />
+            <Stat label="Staffing gaps" value={stats.staffingGaps} tone={stats.staffingGaps ? 'rose' : undefined} />
           </div>
 
-          <div className="mt-4 rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4">
-            <Narrative text={data.narrative} />
+          {/* Suggested solutions — shown first */}
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="lbl">Suggested solutions</p>
+              {findings.length > 0 && <span className="text-[11px] text-[var(--ink-3)]">{findings.length} item{findings.length === 1 ? '' : 's'}</span>}
+            </div>
+            {findings.length === 0 ? (
+              <p className="rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4 text-sm text-[var(--ink-3)]">
+                No issues for courses in this window.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {shown.map((f, i) => {
+                    const s = sev(f.severity);
+                    return (
+                      <div key={i} className="rounded-xl border border-[var(--line)] p-3">
+                        <div className="flex items-start gap-3">
+                          <span className={cx('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', s.chip)}>
+                            <Icon d={typeIcon(f.type)} className="h-[18px] w-[18px]" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge tone={s.tone}>{s.label}</Badge>
+                              <span className="text-sm font-medium text-[var(--ink)]">{f.title}</span>
+                              <span className="text-xs text-[var(--ink-3)]">· {f.course}</span>
+                              {f.date && <span className="text-xs text-[var(--ink-3)]">· {fmtDate(f.date)}</span>}
+                            </div>
+                            <p className="mt-1.5 flex items-start gap-1.5 text-sm text-[var(--ink-2)]">
+                              <Icon d="M13 7l5 5-5 5M6 12h12" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" /> {f.action}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {findings.length > 6 && (
+                  <button onClick={() => setShowAll((v) => !v)} className="mt-2 text-xs font-medium text-[var(--accent-ink)] hover:underline">
+                    {showAll ? 'Show fewer' : `Show all ${findings.length} solutions`}
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
-          {findings.length > 0 && (
-            <div className="mt-4">
-              <p className="lbl mb-2">Suggested fixes</p>
-              <div className="space-y-2">
-                {shown.map((f, i) => (
-                  <div key={i} className="rounded-xl border border-[var(--line)] p-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={(SEV[f.severity] || SEV.low).tone}>{(SEV[f.severity] || SEV.low).label}</Badge>
-                      <span className="text-sm font-medium text-[var(--ink)]">{f.title}</span>
-                      <span className="text-xs text-[var(--ink-3)]">· {f.course}</span>
-                    </div>
-                    <p className="mt-1.5 flex items-start gap-1.5 text-sm text-[var(--ink-2)]">
-                      <Icon d="M13 7l5 5-5 5M6 12h12" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" /> {f.action}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              {findings.length > 6 && (
-                <button onClick={() => setShowAll((v) => !v)} className="mt-2 text-xs font-medium text-[var(--accent-ink)] hover:underline">
-                  {showAll ? 'Show fewer' : `Show all ${findings.length} findings`}
-                </button>
+          {/* Operations briefing — collapsible, below the solutions */}
+          {data.narrative && (
+            <div className="mt-4 border-t border-[var(--line)] pt-3">
+              <button
+                onClick={() => setShowBriefing((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <span className="lbl">Operations briefing</span>
+                <span className="flex items-center gap-1 text-xs font-medium text-[var(--accent-ink)]">
+                  {showBriefing ? 'Hide' : 'Show'}
+                  <Icon d={showBriefing ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} className="h-4 w-4" />
+                </span>
+              </button>
+              {showBriefing && (
+                <div className="mt-3 animate-in rounded-xl border border-[var(--line)] bg-[var(--surface-2)] p-4">
+                  <Narrative text={data.narrative} />
+                  <p className="mt-3 border-t border-[var(--line)] pt-2 text-[11px] text-[var(--ink-3)]">
+                    Summary of the top priorities across all {all.length} item{all.length === 1 ? '' : 's'}. The itemised list is above.
+                  </p>
+                </div>
               )}
             </div>
           )}

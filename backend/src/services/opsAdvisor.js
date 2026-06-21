@@ -13,6 +13,8 @@ export function analyze(courses, { groupSize = 6, maxGroups = 3 } = {}) {
 
   // Index by type+region for consolidation suggestions.
   const future = courses.filter((c) => !['delivered', 'closed', 'cancelled'].includes(c.status));
+  const startById = {};
+  for (const c of future) startById[c.id] = c.startDate || null;
   const byBucket = {};
   for (const c of future) {
     const key = `${c.type}|${c.region}`;
@@ -86,6 +88,7 @@ export function analyze(courses, { groupSize = 6, maxGroups = 3 } = {}) {
     }
   }
 
+  for (const f of findings) f.date = startById[f.courseId] || null;
   findings.sort((a, b) => SEV_RANK[a.severity] - SEV_RANK[b.severity]);
 
   const stats = {

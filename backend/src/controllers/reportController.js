@@ -29,6 +29,7 @@ export async function opsReport(req, res, next) {
         name: c.name,
         type: c.course_type_code || c.course_type_name || 'Course',
         region: c.region || 'Unassigned',
+        startDate: c.start_date,
         status: comp.status,
         enrolled: c.confirmed_students,
         capacity: c.capacity || comp.capacity || comp.groups * 6,
