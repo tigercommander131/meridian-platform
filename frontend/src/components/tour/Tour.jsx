@@ -84,7 +84,7 @@ export default function Tour({ steps }) {
       {/* Spotlight (or full dim for targetless steps). */}
       {rect ? (
         <div
-          className="pointer-events-none absolute rounded-lg ring-2 ring-teal-400 transition-all duration-200"
+          className="pointer-events-none absolute rounded-lg ring-2 ring-[var(--accent)] transition-all duration-200"
           style={{
             left: rect.left - 4,
             top: rect.top - 4,
@@ -103,7 +103,7 @@ export default function Tour({ steps }) {
         style={{ left, top }}
       >
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-700">{step.tag || 'Getting started'}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--accent-ink)]">{step.tag || 'Getting started'}</span>
           <span className="text-xs text-neutral-400">{i + 1} / {steps.length}</span>
         </div>
         <p className="mt-1.5 text-sm font-semibold text-neutral-900">{step.title}</p>
@@ -117,7 +117,7 @@ export default function Tour({ steps }) {
                 Back
               </button>
             )}
-            <button onClick={next} className="rounded-md bg-teal-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-800">
+            <button onClick={next} className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[var(--accent-hover)]">
               {i < steps.length - 1 ? 'Next' : 'Finish'}
             </button>
           </div>

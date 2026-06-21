@@ -3,30 +3,45 @@
 @tailwind utilities;
 
 :root {
-  /* Light-only: native form controls render dark-on-light even in OS dark mode. */
   color-scheme: light;
 
   /* Surfaces & ink */
-  --bg: #f7f8f8;          /* app canvas */
-  --surface: #ffffff;     /* cards */
-  --surface-2: #f4f5f6;   /* sunken / inset */
-  --ink: #18181b;         /* primary text */
-  --ink-2: #52525b;       /* secondary text */
-  --ink-3: #8b8f97;       /* muted text */
-  --line: #e7e8ea;        /* hairline borders */
-  --line-2: #dcdee1;      /* stronger borders */
+  --bg: #f6f7f8;
+  --surface: #ffffff;
+  --surface-2: #f3f4f6;
+  --ink: #15171a;
+  --ink-2: #4b5159;
+  --ink-3: #878d96;
+  --line: #e6e8eb;
+  --line-2: #d6d9dd;
 
-  /* Accent — single teal, per design system (no purple). */
-  --accent: #0f766e;      /* teal-700 */
-  --accent-hover: #115e59;/* teal-800 */
-  --accent-soft: #f0fdfa; /* teal-50  */
-  --accent-ink: #0f766e;
+  /* Accent — overridable per-org at runtime (default teal, never purple). */
+  --accent: #0f766e;
+  --accent-hover: #0c5f58;
+  --accent-soft: #effaf8;
+  --accent-ink: #0b4f49;
 
-  --radius: 0.75rem;
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 4px 12px -2px rgba(16, 24, 40, 0.08), 0 2px 6px -2px rgba(16, 24, 40, 0.05);
-  --shadow-lg: 0 16px 40px -8px rgba(16, 24, 40, 0.16);
+  /* Departures board — the signature dark ops surface. */
+  --board: #0b0f14;
+  --board-2: #11161d;
+  --board-line: #1f2630;
+  --board-ink: #e8edf2;
+  --board-ink-2: #8a95a3;
+
+  /* Status lamps */
+  --lamp-go: #2dd4bf;
+  --lamp-warn: #f5b13d;
+  --lamp-stop: #fb6a78;
+  --lamp-idle: #6b7686;
+
+  --radius: 0.85rem;
+  --space: 1.25rem;        /* density base */
+  --shadow-sm: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+  --shadow-md: 0 6px 16px -4px rgba(16,24,40,.10), 0 2px 6px -2px rgba(16,24,40,.06);
+  --shadow-lg: 0 24px 50px -12px rgba(16,24,40,.22);
 }
+
+[data-density="compact"] { --space: 0.85rem; --radius: 0.7rem; }
 
 html { -webkit-text-size-adjust: 100%; }
 
@@ -39,37 +54,68 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Tighter, modern headings. */
-h1, h2, h3 { letter-spacing: -0.01em; }
-
-/* Inputs inherit the font + a consistent focus ring. */
+h1, h2, h3 { letter-spacing: -0.015em; }
 input, select, textarea, button { font-family: inherit; }
 
-/* Refined, unobtrusive scrollbars. */
-* { scrollbar-width: thin; scrollbar-color: #cdd0d4 transparent; }
+/* Scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #c7ccd2 transparent; }
 *::-webkit-scrollbar { width: 9px; height: 9px; }
-*::-webkit-scrollbar-thumb { background: #cdd0d4; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
-*::-webkit-scrollbar-thumb:hover { background: #b3b7bd; background-clip: content-box; }
-
-::selection { background: #99f6e4; color: #134e4a; }
+*::-webkit-scrollbar-thumb { background: #c7ccd2; border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: #aeb4bc; background-clip: content-box; }
+::selection { background: color-mix(in srgb, var(--accent) 35%, white); color: var(--accent-ink); }
 
 @layer utilities {
   .text-balance { text-wrap: balance; }
+  .font-mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }
+  .tnum { font-variant-numeric: tabular-nums; }
   .bg-grid {
-    background-image: radial-gradient(circle at 1px 1px, rgba(16,24,40,0.05) 1px, transparent 0);
+    background-image: radial-gradient(circle at 1px 1px, rgba(16,24,40,.05) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+  .board-grid {
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,.04) 1px, transparent 0);
     background-size: 22px 22px;
   }
 }
 
 @layer components {
-  /* Shared form control — used across the app via the `.ctl` class. */
   .ctl {
     @apply w-full rounded-lg border border-[var(--line-2)] bg-white px-3 py-2 text-sm text-[var(--ink)]
-           outline-none transition-shadow placeholder:text-[var(--ink-3)]
-           focus:border-[var(--accent)] focus:ring-2 focus:ring-teal-600/15;
+           outline-none transition placeholder:text-[var(--ink-3)];
   }
-  .lbl { @apply text-xs font-medium text-[var(--ink-2)]; }
+  .ctl:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+  .lbl { @apply text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-3)]; }
+
+  /* Ticket / boarding-pass perforation between two panels. */
+  .ticket-notch {
+    position: relative;
+  }
+  .ticket-notch::before, .ticket-notch::after {
+    content: ""; position: absolute; width: 18px; height: 18px; border-radius: 999px;
+    background: var(--bg); border: 1px solid var(--line); left: 50%; transform: translateX(-50%);
+  }
+  .ticket-notch::before { top: -10px; }
+  .ticket-notch::after { bottom: -10px; }
 }
 
-@keyframes fade-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-.animate-in { animation: fade-in 0.25s ease both; }
+/* Status lamp */
+.lamp { width: 9px; height: 9px; border-radius: 999px; box-shadow: 0 0 0 0 currentColor; }
+.lamp-pulse { animation: lamp 2s ease-out infinite; }
+@keyframes lamp { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 60%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+@keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+.animate-in { animation: fade-in .28s ease both; }
+
+/* Split-flap flip for board headers */
+@keyframes flip-in { from { opacity: 0; transform: rotateX(-90deg); } to { opacity: 1; transform: none; } }
+.flip { display: inline-block; animation: flip-in .4s ease both; }
+
+@media (prefers-reduced-motion: reduce), (data-motion: reduce) {
+  .animate-in, .flip, .lamp-pulse { animation: none !important; }
+}
+[data-motion="reduce"] .animate-in,
+[data-motion="reduce"] .flip,
+[data-motion="reduce"] .lamp-pulse { animation: none !important; }

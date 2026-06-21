@@ -204,7 +204,7 @@ export async function opsDashboard(req, res, next) {
       return res.status(403).json({ error: 'Cannot read another organisation', code: 'FORBIDDEN', status: 403 });
     }
     const courses = await query(
-      `SELECT c.*, ct.name AS course_type_name FROM courses c
+      `SELECT c.*, ct.name AS course_type_name, ct.code AS course_type_code FROM courses c
        LEFT JOIN course_types ct ON ct.id = c.course_type_id
        WHERE c.organisation_id = $1 AND c.status NOT IN ('closed', 'cancelled')
        ORDER BY c.start_date NULLS LAST`,
@@ -213,13 +213,21 @@ export async function opsDashboard(req, res, next) {
     const rows = [];
     for (const c of courses.rows) {
       const compliance = await complianceFor(c);
+      const req = compliance.required; const asg = compliance.assigned;
+      const requiredTotal = req.instructors + req.course_director + req.medical_lead + req.doctor;
+      const assignedTotal = Math.min(asg.instructors, req.instructors) + Math.min(asg.course_director, req.course_director)
+        + Math.min(asg.medical_lead + (asg.course_director > 0 ? 1 : 0), req.medical_lead) + Math.min(asg.doctor, req.doctor);
       rows.push({
         id: c.id,
         name: c.name,
         courseType: c.course_type_name,
+        courseTypeCode: c.course_type_code,
+        region: c.region,
+        capacity: c.capacity,
         startDate: c.start_date,
         confirmedStudents: c.confirmed_students,
         status: c.status,
+        crew: { assigned: assignedTotal, required: requiredTotal, groups: compliance.groups },
         compliance: { status: compliance.status, missing: compliance.missing, explanation: compliance.explanation },
       });
     }

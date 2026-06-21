@@ -13,6 +13,7 @@ const icons = {
   students: 'M16 11a4 4 0 10-8 0 4 4 0 008 0zM4 20a8 8 0 0116 0',
   accreditation: 'M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 7.7l5.4-.8z',
   team: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4 0M17 7a3 3 0 11-2 0',
+  settings: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-2.82 1.17V21a2 2 0 01-4 0v-.09A1.65 1.65 0 007 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 003.6 14a1.65 1.65 0 00-1.51-1H2a2 2 0 010-4h.09A1.65 1.65 0 004 7a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 3.6 1.65 1.65 0 0010 2.09V2a2 2 0 014 0v.09A1.65 1.65 0 0017 4a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0021 9.91V10a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z',
 };
 
 const nav = [
@@ -23,11 +24,12 @@ const nav = [
   { href: '/students', label: 'Students', icon: 'students' },
   { section: 'Configuration' },
   { href: '/accreditation', label: 'Accreditation & Rules', icon: 'accreditation', tour: 'nav-accreditation' },
+  { href: '/settings', label: 'Settings', icon: 'settings' },
   { section: 'Admin', adminOnly: true },
   { href: '/users', label: 'Team', icon: 'team', adminOnly: true },
 ];
 
-export default function Sidebar({ user, onNavigate }) {
+export default function Sidebar({ user, org, onNavigate }) {
   const pathname = usePathname();
   const isAdmin = user?.roles?.some((r) => ['admin', 'organisation_admin'].includes(r));
 
@@ -46,10 +48,10 @@ export default function Sidebar({ user, onNavigate }) {
         return (
           <Link key={item.href} href={item.href} onClick={onNavigate} data-tour={item.tour}
             className={`group relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
-              active ? 'bg-teal-50 font-medium text-teal-800' : 'text-[var(--ink-2)] hover:bg-neutral-100 hover:text-[var(--ink)]'
+              active ? 'bg-[var(--accent-soft)] font-medium text-[var(--accent-ink)]' : 'text-[var(--ink-2)] hover:bg-neutral-100 hover:text-[var(--ink)]'
             }`}>
-            {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-1 rounded-r-full bg-teal-600" />}
-            <span className={active ? 'text-teal-600' : 'text-[var(--ink-3)] group-hover:text-[var(--ink-2)]'}>
+            {active && <span className="absolute left-0 top-1.5 h-[calc(100%-12px)] w-1 rounded-r-full bg-[var(--accent)]" />}
+            <span className={active ? 'text-[var(--accent)]' : 'text-[var(--ink-3)] group-hover:text-[var(--ink-2)]'}>
               <Icon d={icons[item.icon]} className="h-[18px] w-[18px]" />
             </span>
             {item.label}

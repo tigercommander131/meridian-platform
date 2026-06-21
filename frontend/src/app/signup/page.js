@@ -47,7 +47,7 @@ export default function SignupPage() {
     <AuthLayout
       title="Create your workspace"
       subtitle="Set up your organisation and admin account"
-      footer={<>Already have an account? <Link href="/login" className="font-medium text-teal-700 hover:underline">Sign in</Link></>}
+      footer={<>Already have an account? <Link href="/login" className="font-medium text-[var(--accent-ink)] hover:underline">Sign in</Link></>}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Organisation" value={form.organisationName} onChange={set('organisationName')}
@@ -64,7 +64,7 @@ export default function SignupPage() {
         {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
 
         <button type="submit" disabled={loading}
-          className="w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-800 disabled:opacity-50">
+          className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50">
           {loading ? 'Creating…' : 'Create account'}
         </button>
         <p className="text-center text-xs text-neutral-400">

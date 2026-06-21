@@ -5,6 +5,7 @@ import { listAccreditation, createAccreditation, listCourseTypes, createCourseTy
 import { listInstructors, createInstructor } from '../controllers/instructorsController.js';
 import { opsDashboard } from '../controllers/staffingController.js';
 import { listUsers, createUser } from '../controllers/usersController.js';
+import { getOrganisation, updateOrganisation } from '../controllers/organisationsController.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 
 const WRITE = ['admin', 'organisation_admin', 'course_operations_manager', 'course_coordinator', 'educator'];
@@ -33,6 +34,10 @@ router.post('/:orgId/instructors', authenticate, requireRole(...WRITE), createIn
 
 // Operations dashboard (courses needing attention).
 router.get('/:orgId/dashboard', authenticate, opsDashboard);
+
+// Organisation profile (settings).
+router.get('/:orgId/profile', authenticate, getOrganisation);
+router.put('/:orgId/profile', authenticate, requireRole('admin', 'organisation_admin'), updateOrganisation);
 
 // Admin user management.
 router.get('/:orgId/users', authenticate, requireRole('admin', 'organisation_admin'), listUsers);

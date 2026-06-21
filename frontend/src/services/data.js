@@ -81,6 +81,29 @@ export const dashboardApi = {
   get() { return api.get(`/organisations/${orgId()}/dashboard`); },
 };
 
+export const orgApi = {
+  get() { return api.get(`/organisations/${orgId()}/profile`); },
+  update(payload) { return api.put(`/organisations/${orgId()}/profile`, payload); },
+};
+
+// Course status → airline "departures board" presentation.
+// lamp ∈ go|warn|stop|idle|departed   tone = Badge tone
+export const FLIGHT_STATUS = {
+  ready:           { label: 'CLEARED',   lamp: 'go',   tone: 'teal' },
+  staffing_risk:   { label: 'STAFFING',  lamp: 'warn', tone: 'amber' },
+  compliance_risk: { label: 'AT RISK',   lamp: 'stop', tone: 'rose' },
+  viability_risk:  { label: 'VIABILITY', lamp: 'warn', tone: 'amber' },
+  planning:        { label: 'SCHEDULED', lamp: 'idle', tone: 'blue' },
+  draft:           { label: 'DRAFT',     lamp: 'idle', tone: 'neutral' },
+  delivered:       { label: 'DEPARTED',  lamp: 'departed', tone: 'dark' },
+  closed:          { label: 'CLOSED',    lamp: 'idle', tone: 'neutral' },
+  cancelled:       { label: 'CANCELLED', lamp: 'stop', tone: 'rose' },
+};
+export const flight = (s) => FLIGHT_STATUS[s] || FLIGHT_STATUS.planning;
+
+// IATA-ish 3-letter "station" code from a region name (for board flavour).
+export const station = (region) => (region ? region.slice(0, 3).toUpperCase() : 'TBD');
+
 // Staffing roles + display labels.
 export const STAFF_ROLES = [
   { value: 'course_director', label: 'Course Director' },

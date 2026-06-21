@@ -1,6 +1,20 @@
 # CTOP — Handoff
 
-**Last updated:** 2026-06-21 — **Milestone 2 (People & rostering) built + major UI redesign.** M1 (Compliance Core) live. M2 code complete, not yet deployed (deploy = push `main`; local Postgres down so DB tests unrun locally).
+**Last updated:** 2026-06-21 — **M2 (People & rostering) live + airline-bold redesign v2 + Settings page.** M1 live. (Local Postgres still down → DB tests unrun locally; verified via build + live screenshots.)
+
+## Redesign v2 — "airline / departures board" (NEW)
+- Theme system: `globals.css` adds a dark **board** surface + status **lamps** + accent driven by a runtime CSS var (`--accent`), density (`[data-density]`) and reduced-motion. `utils/appearance.js` applies org accent + local density/motion to `<html>`; `applyAccent` derives hover/soft/ink via `color-mix`.
+- New primitives `components/ui/aviation.jsx`: `Lamp`, `FlightStatus` (lamp + mono label), `Stamp` (CLEARED/HOLD), `Station` (IATA-style code), `FlightPath`. `data.js` adds `FLIGHT_STATUS` map (ready→CLEARED, compliance_risk→AT RISK, delivered→DEPARTED…), `flight()`, `station()`.
+- **Dashboard = live departures board** (dark panel, mono flight rows: code · course · route · date · crew x/y · status lamp; live clock; ops lamp tiles). Dashboard API now returns `region`, `courseTypeCode`, `crew{assigned,required,groups}`.
+- **Course = flight gate**: dark flight banner + **Clearance** card (HOLD/CLEARED stamp + meter) + **Crew manifest** + **Standby list** (the candidate escalation).
+- **Invite = boarding pass** (perforated ticket, station route, accept/decline → CLEARED/DECLINED stamp).
+- Instructors/courses/students/users/auth: accent-var-driven (core chrome no longer hardcodes teal; semantic status greens kept). Kit Button/Badge/Avatar/Tabs/logo/sidebar use `var(--accent)`.
+
+## Settings + org profile (NEW)
+- Migration `009_org_profile.sql`: `organisations` + `accent`, `regions TEXT[]`, `tagline`, `updated_at`.
+- `controllers/organisationsController.js` + routes `GET/PUT /api/organisations/:orgId/profile` (PUT admin-gated; validates accent hex). `orgApi` in `data.js`.
+- **Settings page** (`app/settings`, in sidebar): org profile (name, tagline, regions chips, **accent swatch picker** — no purple, live preview) + **Appearance** (density comfortable/compact, motion full/reduced, saved to localStorage). AppShell loads org → applies accent + shows org name in header.
+- Example data: **seeder now populates BOTH `parasol` and the default `ato` org** (8 crew across regions incl. 1 candidate + 1 expired credential, availability, IC1 record, 4 courses spanning ready / at-risk / delivered). Re-run `npm run seed:ctop` on Railway.
 
 ## What CTOP is
 Operations platform for running accredited clinical courses. Core question: *"can this

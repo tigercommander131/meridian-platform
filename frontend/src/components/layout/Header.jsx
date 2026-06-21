@@ -3,7 +3,7 @@
 import { LogoMark } from '@/components/brand/Logo';
 import { Avatar, Button, Icon } from '@/components/ui/kit';
 
-export default function Header({ user, onLogout, onMenu }) {
+export default function Header({ user, org, onLogout, onMenu }) {
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-[var(--line)] bg-white/85 px-4 backdrop-blur-md sm:px-6">
       <div className="flex items-center gap-3">
@@ -12,10 +12,13 @@ export default function Header({ user, onLogout, onMenu }) {
         </button>
         <div className="flex items-center gap-2.5">
           <LogoMark className="h-7 w-7" />
-          <div className="leading-none">
-            <span className="text-[15px] font-semibold tracking-tight text-[var(--ink)]">CTOP</span>
-            <span className="ml-2 hidden text-xs text-[var(--ink-3)] sm:inline">Clinical Training Operations</span>
-          </div>
+          <span className="font-mono text-[15px] font-bold tracking-tight text-[var(--ink)]">CTOP</span>
+          {org?.name && (
+            <span className="hidden items-center gap-2 sm:flex">
+              <span className="h-3.5 w-px bg-[var(--line-2)]" />
+              <span className="text-sm text-[var(--ink-2)]">{org.name}</span>
+            </span>
+          )}
         </div>
       </div>
 

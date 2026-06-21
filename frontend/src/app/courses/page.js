@@ -80,7 +80,7 @@ function CourseCard({ c }) {
   const fill = c.capacity ? Math.min(100, Math.round((c.confirmedStudents / c.capacity) * 100)) : 0;
   return (
     <Link href={`/courses/${c.id}`}
-      className="group rounded-2xl border border-[var(--line)] bg-white p-5 shadow-card transition-all hover:border-teal-300 hover:shadow-soft">
+      className="group rounded-2xl border border-[var(--line)] bg-white p-5 shadow-card transition-all hover:border-[color:var(--accent)]/40 hover:shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-semibold text-[var(--ink)]">{c.name}</p>
         <StatusBadge status={c.status} className="shrink-0" />
@@ -93,7 +93,7 @@ function CourseCard({ c }) {
         </div>
         {c.capacity ? (
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-            <div className="h-full rounded-full bg-teal-500" style={{ width: `${fill}%` }} />
+            <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${fill}%` }} />
           </div>
         ) : null}
       </div>

@@ -42,7 +42,7 @@ export function Field({ label, hint, ...props }) {
       </span>
       <input
         {...props}
-        className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20"
+        className="mt-1.5 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-[var(--accent)] focus:ring-2 focus:ring-[color:var(--accent)]/20"
       />
     </label>
   );

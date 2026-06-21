@@ -265,7 +265,7 @@ function InstructorsContent() {
       <div className="mt-5 flex gap-1.5">
         {FILTERS.map(([v, l]) => (
           <button key={v} onClick={() => setFilter(v)}
-            className={`rounded-full px-3 py-1 text-sm transition-colors ${filter === v ? 'bg-teal-700 text-white' : 'border border-[var(--line-2)] bg-white text-[var(--ink-2)] hover:bg-neutral-50'}`}>
+            className={`rounded-full px-3 py-1 text-sm transition-colors ${filter === v ? 'bg-[var(--accent)] text-white' : 'border border-[var(--line-2)] bg-white text-[var(--ink-2)] hover:bg-neutral-50'}`}>
             {l}
           </button>
         ))}

@@ -43,7 +43,7 @@ export default function LoginPage() {
     <AuthLayout
       title="Welcome back"
       subtitle="Sign in to your training workspace"
-      footer={<>New organisation? <Link href="/signup" className="font-medium text-teal-700 hover:underline">Create an account</Link></>}
+      footer={<>New organisation? <Link href="/signup" className="font-medium text-[var(--accent-ink)] hover:underline">Create an account</Link></>}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field
@@ -70,7 +70,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-teal-800 disabled:opacity-50"
+          className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50"
         >
           {loading ? 'Signing in…' : 'Sign in'}
         </button>
