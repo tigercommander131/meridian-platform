@@ -7,7 +7,9 @@ import { config } from '../config/environment.js';
 import { summaryText } from './opsAdvisor.js';
 
 const ENDPOINT = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-opus-4-8';
+// Only the highest-priority findings are sent to Claude — keeps cost flat and
+// quality high regardless of how many courses are at risk.
+const MAX_FINDINGS = 40;
 
 export function aiEnabled() {
   return Boolean(config.claudeApiKey);
@@ -27,10 +29,12 @@ export async function generateReport(analysis, orgName = 'your organisation') {
   const fallback = { narrative: summaryText(analysis, orgName), source: 'deterministic', aiEnabled: aiEnabled() };
   if (!aiEnabled()) return fallback;
 
+  const sent = analysis.findings.slice(0, MAX_FINDINGS);
+  const omitted = analysis.findings.length - sent.length;
   const userContent =
     `Organisation: ${orgName}\n\n` +
     `Portfolio stats: ${JSON.stringify(analysis.stats)}\n\n` +
-    `Findings (already prioritised by severity):\n${JSON.stringify(analysis.findings, null, 2)}\n\n` +
+    `Top findings (already prioritised by severity${omitted > 0 ? `; ${omitted} lower-priority findings omitted` : ''}):\n${JSON.stringify(sent, null, 2)}\n\n` +
     `Write the operations briefing.`;
 
   try {
@@ -42,7 +46,7 @@ export async function generateReport(analysis, orgName = 'your organisation') {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        model: MODEL,
+        model: config.claudeModel,
         max_tokens: 1500,
         system: SYSTEM,
         output_config: { effort: 'medium' },

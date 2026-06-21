@@ -19,4 +19,6 @@ export const config = {
   appUrl: process.env.APP_URL || process.env.CORS_ORIGIN?.split(',')[0]?.trim() || 'http://localhost:3000',
   // Claude API key for the AI operations report (optional — deterministic fallback otherwise).
   claudeApiKey: process.env.CLAUDE_API_KEY || process.env.ANTHROPIC_API_KEY,
+  // Model for the AI report. Override with CLAUDE_MODEL (e.g. claude-sonnet-4-6 to cut cost).
+  claudeModel: process.env.CLAUDE_MODEL || 'claude-opus-4-8',
 };
