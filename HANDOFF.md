@@ -1,6 +1,10 @@
 # CTOP — Handoff
 
-**Last updated:** 2026-06-21 — **AI report card reworked (solutions-first + icons + collapsible briefing + week filter).** M2 + airline-bold redesign v2 + Settings live. M1 live. (Local Postgres still down → DB tests unrun locally; verified via build + live screenshots.)
+**Last updated:** 2026-06-21 — **Course filters added (Courses page + dashboard board): search · type · location · status · time-window.** AI report card reworked (solutions-first + icons + collapsible briefing + week filter). M2 + airline-bold redesign v2 + Settings live. M1 live. (Local Postgres still down → DB tests unrun locally; verified via prod build + live screenshots.)
+
+## Course filters (NEW)
+- Shared `components/ui/CourseFilters.jsx` (`variant` light | board) + helpers in `services/data.js` (`COURSE_WINDOWS`, `emptyCourseFilter`, `courseFilterActive`, `distinct`, `filterCourses(courses, f, acc)`). Filters: **search** (name/location/type/ref), **type**, **location** (region), **status**, **time-window** (any · next 7d/2w/4w/6w). `acc` = field accessors so one filter serves both surfaces (courses page uses `courseTypeName`; board uses `courseTypeCode`).
+- Wired into **Courses page** (`app/courses/page.js`, light bar + "no match" state) and the **dashboard board** (`app/dashboard/page.js`, dark bar in board header; filter applies before sort+limit; resets show-more on change; KPI tiles + the "500" header count stay portfolio-wide, filter bar shows count/total). Verified via prod build (compiles, types OK).
 
 ## AI operations report + board UX (NEW)
 - **AI report:** deterministic advisor `services/opsAdvisor.js` scans courses → prioritised findings + concrete fixes (under-minimum → consolidate into a same-type/region sibling course or drop a group; excess waitlist → add a group or schedule another course; over-capacity; instructor shortage; missing CD/MD). `services/aiReport.js` narrates them via **Claude** (`claude-opus-4-8`, Messages API over global `fetch` — no SDK dep, mirrors emailService) when `CLAUDE_API_KEY` (or `ANTHROPIC_API_KEY`) is set; **deterministic fallback** otherwise (refusal/error-safe). `GET /api/organisations/:org/ops-report` (reportController). Dashboard card `components/ops/OpsReport.jsx` (manual "Run report" — it's billed/latency). Verified: analyzer + fallback produce the requested suggestions on sample data.

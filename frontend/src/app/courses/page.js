@@ -6,8 +6,9 @@ import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import StatusBadge from '@/components/ui/StatusBadge';
+import CourseFilters from '@/components/ui/CourseFilters';
 import { Card, CardHeader, Button, Field, Input, Select, Skeleton, Icon } from '@/components/ui/kit';
-import { coursesApi, accreditationApi, fmtDate } from '@/services/data';
+import { coursesApi, accreditationApi, fmtDate, filterCourses, emptyCourseFilter } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
 function CreateCourse({ accreditation, onCreated, onCancel }) {
@@ -101,10 +102,19 @@ function CourseCard({ c }) {
   );
 }
 
+const COURSE_ACC = {
+  type: (c) => c.courseTypeName || '',
+  region: (c) => c.region || '',
+  status: (c) => c.status,
+  date: (c) => c.startDate,
+  search: (c) => `${c.name} ${c.region || ''} ${c.externalRef || ''} ${c.courseTypeName || ''}`,
+};
+
 function CoursesContent() {
   const [courses, setCourses] = useState(null);
   const [accreditation, setAccreditation] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
+  const [filter, setFilter] = useState(emptyCourseFilter());
 
   const load = useCallback(async () => {
     const r = await coursesApi.list();
@@ -115,6 +125,8 @@ function CoursesContent() {
     load();
     accreditationApi.list().then((r) => setAccreditation(r.accreditation)).catch(() => {});
   }, [load]);
+
+  const filtered = courses ? filterCourses(courses, filter, COURSE_ACC) : [];
 
   return (
     <>
@@ -139,9 +151,16 @@ function CoursesContent() {
             action={<Button onClick={() => setShowCreate(true)}>New course</Button>}
           />
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {courses.map((c) => <CourseCard key={c.id} c={c} />)}
-          </div>
+          <>
+            <CourseFilters courses={courses} value={filter} onChange={setFilter} acc={COURSE_ACC} count={filtered.length} total={courses.length} />
+            {filtered.length === 0 ? (
+              <p className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-8 text-center text-sm text-[var(--ink-3)]">No courses match these filters.</p>
+            ) : (
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {filtered.map((c) => <CourseCard key={c.id} c={c} />)}
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

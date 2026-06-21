@@ -6,8 +6,9 @@ import AppShell from '@/components/layout/AppShell';
 import { Skeleton, Icon, Button } from '@/components/ui/kit';
 import { FlightStatus, Lamp } from '@/components/ui/aviation';
 import OpsReport from '@/components/ops/OpsReport';
+import CourseFilters from '@/components/ui/CourseFilters';
 import { useAuth } from '@/hooks/useAuth';
-import { dashboardApi, fmtDate, fmtDateRange, flight, station } from '@/services/data';
+import { dashboardApi, fmtDate, fmtDateRange, flight, station, filterCourses, emptyCourseFilter } from '@/services/data';
 
 function useClock() {
   const [t, setT] = useState(null);
@@ -17,6 +18,13 @@ function useClock() {
 
 const GRID = 'grid-cols-[7rem_1fr_auto] sm:grid-cols-[6.5rem_7rem_8.5rem_4.5rem_4.5rem_4rem_7rem]';
 const RANK = { compliance_risk: 0, staffing_risk: 1, viability_risk: 2, planning: 3, ready: 4, delivered: 5 };
+const BOARD_ACC = {
+  type: (c) => c.courseTypeCode || c.courseType || '',
+  region: (c) => c.region || '',
+  status: (c) => c.compliance.status,
+  date: (c) => c.startDate,
+  search: (c) => `${c.courseTypeCode || ''} ${c.region || ''} ${c.name || ''} ${c.externalRef || ''}`,
+};
 
 function Tile({ label, value, lamp, hint }) {
   return (
@@ -67,6 +75,7 @@ function DashboardContent() {
   const { user } = useAuth();
   const [courses, setCourses] = useState(null);
   const [limit, setLimit] = useState(12);
+  const [filter, setFilter] = useState(emptyCourseFilter());
   const clock = useClock();
 
   useEffect(() => { dashboardApi.get().then((r) => setCourses(r.courses)).catch(() => setCourses([])); }, []);
@@ -75,7 +84,8 @@ function DashboardContent() {
   const cleared = list.filter((c) => c.compliance.status === 'ready').length;
   const atRisk = list.filter((c) => ['compliance_risk', 'staffing_risk', 'viability_risk'].includes(c.compliance.status)).length;
   const gaps = list.reduce((n, c) => n + (c.crew ? Math.max(0, c.crew.required - c.crew.assigned) : 0), 0);
-  const sorted = [...list].sort((a, b) => (RANK[a.compliance.status] ?? 9) - (RANK[b.compliance.status] ?? 9));
+  const filtered = filterCourses(list, filter, BOARD_ACC);
+  const sorted = [...filtered].sort((a, b) => (RANK[a.compliance.status] ?? 9) - (RANK[b.compliance.status] ?? 9));
   const shown = sorted.slice(0, limit);
 
   return (
@@ -115,6 +125,10 @@ function DashboardContent() {
           </div>
         </div>
 
+        {courses && list.length > 0 && (
+          <CourseFilters courses={list} value={filter} onChange={(v) => { setFilter(v); setLimit(12); }} acc={BOARD_ACC} variant="board" count={filtered.length} total={list.length} />
+        )}
+
         <div className={`hidden ${GRID} gap-3 border-b border-[var(--board-line)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--board-ink-2)] sm:grid`}>
           <span>Course</span><span>Location</span><span>Date</span><span>Instructors</span><span>Students</span><span>Waitlist</span><span>Status</span>
         </div>
@@ -123,11 +137,13 @@ function DashboardContent() {
           <div className="space-y-px p-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full bg-white/5" />)}</div>
         ) : list.length === 0 ? (
           <p className="px-4 py-10 text-center font-mono text-sm text-[var(--board-ink-2)]">NO COURSES — create one to begin.</p>
+        ) : filtered.length === 0 ? (
+          <p className="px-4 py-10 text-center font-mono text-sm text-[var(--board-ink-2)]">NO MATCH — adjust the filters.</p>
         ) : (
           shown.map((c) => <CourseRow key={c.id} c={c} />)
         )}
 
-        {courses && list.length > 12 && (
+        {courses && filtered.length > 12 && (
           <div className="flex items-center justify-center gap-2 px-4 py-3">
             {limit < sorted.length && <button onClick={() => setLimit((n) => n + 25)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">SHOW MORE</button>}
             {limit < sorted.length && <button onClick={() => setLimit(sorted.length)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">· SHOW ALL ·</button>}

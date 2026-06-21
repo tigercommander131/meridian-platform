@@ -181,6 +181,46 @@ export function fmtDateRange(start, end) {
   return `${fmtDate(start, { day: 'numeric', month: 'short' })} – ${fmtDate(end)}`;
 }
 
+// Course filtering (shared by the Courses page + the dashboard board).
+export const COURSE_WINDOWS = [
+  { key: 'all', label: 'Any time', days: null },
+  { key: 'w1', label: 'Next 7 days', days: 7 },
+  { key: 'w2', label: 'Next 2 weeks', days: 14 },
+  { key: 'w4', label: 'Next 4 weeks', days: 28 },
+  { key: 'w6', label: 'Next 6 weeks', days: 42 },
+];
+
+export const emptyCourseFilter = () => ({ q: '', type: '', region: '', status: '', when: 'all' });
+export const courseFilterActive = (f) => Boolean(f && (f.q || f.type || f.region || f.status || (f.when && f.when !== 'all')));
+
+// Distinct, sorted values for a select (skips blanks).
+export function distinct(items, fn) {
+  return [...new Set((items || []).map(fn).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
+}
+
+// Apply a filter object to a course list. `acc` supplies field accessors so the
+// same logic serves both the card list (courseTypeName) and the board (courseTypeCode).
+export function filterCourses(courses, f, acc) {
+  const { q = '', type = '', region = '', status = '', when = 'all' } = f || {};
+  const days = COURSE_WINDOWS.find((w) => w.key === when)?.days ?? null;
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const cutoff = days != null ? start.getTime() + days * 86400000 : null;
+  const ql = q.trim().toLowerCase();
+  return (courses || []).filter((c) => {
+    if (type && acc.type(c) !== type) return false;
+    if (region && acc.region(c) !== region) return false;
+    if (status && acc.status(c) !== status) return false;
+    if (cutoff != null) {
+      const d = acc.date(c);
+      if (!d) return false;
+      const t = new Date(d).getTime();
+      if (t < start.getTime() || t > cutoff) return false;
+    }
+    if (ql && !acc.search(c).toLowerCase().includes(ql)) return false;
+    return true;
+  });
+}
+
 // Minimal CSV parser for the students import (header row + comma values).
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
