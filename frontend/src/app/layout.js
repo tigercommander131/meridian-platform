@@ -13,8 +13,8 @@ const geistMono = localFont({
 });
 
 export const metadata = {
-  title: "Indigo Learning",
-  description: "Learning Operations Platform for simulation-based education.",
+  title: "CTOP — Clinical Training Operations",
+  description: "Clinical Training Operations Platform for accredited course delivery.",
 };
 
 export default function RootLayout({ children }) {

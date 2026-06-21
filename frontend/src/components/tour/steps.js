@@ -3,42 +3,36 @@
 export const TOUR_STEPS = [
   {
     tag: 'Welcome',
-    title: 'Welcome to Indigo Learning',
-    body: 'A 30-second tour of how the workspace fits together. Skip anytime.',
+    title: 'Welcome to CTOP',
+    body: 'A 30-second tour of how the operations workspace fits together. Skip anytime.',
   },
   {
     selector: '[data-tour="sidebar"]',
     tag: 'Workspace',
-    title: 'Your workspace',
-    body: 'Everything lives here — students, courses, cohorts, sessions and reports.',
+    title: 'Your ops workspace',
+    body: 'Run accredited courses end to end — courses, instructors, students and the rules that govern them.',
+  },
+  {
+    selector: '[data-tour="nav-accreditation"]',
+    tag: 'Step 1',
+    title: 'Set the rules',
+    body: 'Add accreditation bodies (ARC, RA) and course types, each with a versioned staffing rule set.',
+  },
+  {
+    selector: '[data-tour="nav-instructors"]',
+    tag: 'Step 2',
+    title: 'Build your crew',
+    body: 'Add instructors with their credentials and eligible roles — your pool to staff courses from.',
   },
   {
     selector: '[data-tour="nav-courses"]',
-    tag: 'Step 1',
-    title: 'Start with a course',
-    body: 'Create a course (e.g. ALS), then group learners into cohorts to run it.',
-  },
-  {
-    selector: '[data-tour="nav-students"]',
-    tag: 'Step 2',
-    title: 'Add your learners',
-    body: 'Enrol students one by one, or bulk-import from CSV.',
-  },
-  {
-    selector: '[data-tour="nav-sessions"]',
     tag: 'Step 3',
-    title: 'Run a session',
-    body: 'Check learners in (QR or manual), assign roles, and score against the rubric — evidence auto-fills from the simulator.',
-  },
-  {
-    selector: '[data-tour="nav-reports"]',
-    tag: 'Step 4',
-    title: 'Release & report',
-    body: 'Approve and release scores; they become candidate reports and CSV/PDF exports.',
+    title: 'Run a course',
+    body: 'Create a course, set student numbers, and assign staff — CTOP checks compliance live and tells you exactly what is missing.',
   },
   {
     tag: 'Done',
-    title: "You're all set",
-    body: 'Create your first course to begin. Replay this tour any time via “Take a tour” in the sidebar.',
+    title: "You're set",
+    body: 'The Dashboard flags every course needing attention. Replay this tour any time via “Take a tour”.',
   },
 ];

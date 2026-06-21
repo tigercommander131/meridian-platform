@@ -23,15 +23,13 @@ export default function AppShell({ children }) {
   // Open the live connection for the whole authenticated app.
   useRealtime();
 
-  // Redirect once auth state is resolved: unauthenticated → login, students →
-  // their portal. Done in an effect so we never call router during render.
+  // Redirect to login once we know the user isn't authenticated (in an effect so
+  // we never call router during render).
   useEffect(() => {
-    if (isLoading) return;
-    if (!isAuthenticated) router.replace('/login');
-    else if (user?.kind === 'student') router.replace('/portal');
-  }, [isLoading, isAuthenticated, user, router]);
+    if (!isLoading && !isAuthenticated) router.replace('/login');
+  }, [isLoading, isAuthenticated, router]);
 
-  if (isLoading || !user || !isAuthenticated || user.kind === 'student') {
+  if (isLoading || !user || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-neutral-500">
         Loading…

@@ -1,9 +1,10 @@
-import { api, auth, apiDownload } from './api';
+import { api, auth } from './api';
 
 function orgId() {
   return auth.getUser()?.organisationId;
 }
 
+// Students (learners).
 export const learnersApi = {
   list({ search = '', limit = 50, offset = 0 } = {}) {
     const qs = new URLSearchParams({ search, limit, offset }).toString();
@@ -17,10 +18,32 @@ export const learnersApi = {
   },
 };
 
-export const scenariosApi = {
-  list() {
-    return api.get(`/organisations/${orgId()}/scenarios`);
+export const usersApi = {
+  list() { return api.get(`/organisations/${orgId()}/users`); },
+  create(record) { return api.post(`/organisations/${orgId()}/users`, record); },
+};
+
+// Accreditation organisations + course types + versioned rule sets.
+export const accreditationApi = {
+  list() { return api.get(`/organisations/${orgId()}/accreditation`); },
+  create(payload) { return api.post(`/organisations/${orgId()}/accreditation`, payload); },
+  listCourseTypes(accreditationId) {
+    const qs = accreditationId ? `?accreditationId=${accreditationId}` : '';
+    return api.get(`/organisations/${orgId()}/course-types${qs}`);
   },
+  createCourseType(payload) { return api.post(`/organisations/${orgId()}/course-types`, payload); },
+  listRuleSets(courseTypeId) { return api.get(`/course-types/${courseTypeId}/rule-sets`); },
+  createRuleSet(courseTypeId, rules) { return api.post(`/course-types/${courseTypeId}/rule-sets`, { rules }); },
+};
+
+export const instructorsApi = {
+  list({ status = '', search = '' } = {}) {
+    const qs = new URLSearchParams({ status, search }).toString();
+    return api.get(`/organisations/${orgId()}/instructors?${qs}`);
+  },
+  create(record) { return api.post(`/organisations/${orgId()}/instructors`, record); },
+  get(id) { return api.get(`/instructors/${id}`); },
+  addCredential(id, payload) { return api.post(`/instructors/${id}/credentials`, payload); },
 };
 
 export const coursesApi = {
@@ -28,161 +51,47 @@ export const coursesApi = {
     const qs = status ? `?status=${encodeURIComponent(status)}` : '';
     return api.get(`/organisations/${orgId()}/courses${qs}`);
   },
-  get(courseId) {
-    return api.get(`/organisations/${orgId()}/courses/${courseId}`);
-  },
-  create(payload) {
-    return api.post(`/organisations/${orgId()}/courses`, payload);
-  },
-  update(courseId, payload) {
-    return api.put(`/organisations/${orgId()}/courses/${courseId}`, payload);
-  },
+  get(courseId) { return api.get(`/organisations/${orgId()}/courses/${courseId}`); },
+  create(payload) { return api.post(`/organisations/${orgId()}/courses`, payload); },
+  update(courseId, payload) { return api.put(`/organisations/${orgId()}/courses/${courseId}`, payload); },
 };
 
-// Course lifecycle states + their display treatment (neutral + teal accent).
-export const COURSE_STATES = {
-  active: { label: 'Active', cls: 'bg-teal-50 text-teal-700' },
-  completed: { label: 'Completed', cls: 'bg-neutral-100 text-neutral-600' },
-  archived: { label: 'Archived', cls: 'bg-neutral-200 text-neutral-500' },
+export const staffingApi = {
+  get(courseId) { return api.get(`/courses/${courseId}/staffing`); },
+  assign(courseId, payload) { return api.post(`/courses/${courseId}/staffing`, payload); },
+  remove(courseId, staffingId) { return api.del(`/courses/${courseId}/staffing/${staffingId}`); },
 };
 
-export const usersApi = {
-  list() {
-    return api.get(`/organisations/${orgId()}/users`);
-  },
-  create(record) {
-    return api.post(`/organisations/${orgId()}/users`, record);
-  },
+export const dashboardApi = {
+  get() { return api.get(`/organisations/${orgId()}/dashboard`); },
 };
 
-export const cohortsApi = {
-  listForCourse(courseId) {
-    return api.get(`/courses/${courseId}/cohorts`);
-  },
-  create(courseId, payload) {
-    return api.post(`/courses/${courseId}/cohorts`, payload);
-  },
-  get(cohortId) {
-    return api.get(`/cohorts/${cohortId}`);
-  },
+// Staffing roles + display labels.
+export const STAFF_ROLES = [
+  { value: 'course_director', label: 'Course Director' },
+  { value: 'medical_lead', label: 'Medical Lead' },
+  { value: 'doctor', label: 'Doctor' },
+  { value: 'instructor', label: 'Instructor' },
+  { value: 'instructor_candidate', label: 'Instructor Candidate' },
+  { value: 'assessor', label: 'Assessor' },
+];
+export const roleLabel = (v) => STAFF_ROLES.find((r) => r.value === v)?.label || v;
+
+// Course / compliance status display (neutral + teal accent; risk = amber/rose).
+export const STATUS_STYLE = {
+  draft: 'bg-neutral-100 text-neutral-600',
+  planning: 'bg-neutral-100 text-neutral-600',
+  staffing_risk: 'bg-amber-50 text-amber-700',
+  compliance_risk: 'bg-rose-50 text-rose-700',
+  viability_risk: 'bg-amber-50 text-amber-700',
+  ready: 'bg-teal-50 text-teal-700',
+  delivered: 'bg-neutral-900 text-white',
+  closed: 'bg-neutral-200 text-neutral-500',
+  cancelled: 'bg-neutral-200 text-neutral-500',
 };
+export const statusLabel = (s) => (s || '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-export const sessionsApi = {
-  listForCohort(cohortId) {
-    return api.get(`/cohorts/${cohortId}/sessions`);
-  },
-  create(cohortId, payload) {
-    return api.post(`/cohorts/${cohortId}/sessions`, payload);
-  },
-  get(sessionId) {
-    return api.get(`/sessions/${sessionId}`);
-  },
-  checkin(sessionId, participantId, method = 'manual') {
-    return api.put(`/sessions/${sessionId}/participants/${participantId}/checkin`, { method });
-  },
-  assignRole(sessionId, participantId, role) {
-    return api.put(`/sessions/${sessionId}/participants/${participantId}/role`, { role });
-  },
-  start(sessionId) {
-    return api.post(`/sessions/${sessionId}/start`, {});
-  },
-  end(sessionId) {
-    return api.post(`/sessions/${sessionId}/end`, {});
-  },
-  ingestEvent(sessionId, payload) {
-    return api.post(`/sessions/${sessionId}/flight-recorder-events`, payload);
-  },
-  scores(sessionId) {
-    return api.get(`/sessions/${sessionId}/rubric-scores`);
-  },
-};
-
-export const scoringApi = {
-  context(sessionId, participantId) {
-    return api.get(`/sessions/${sessionId}/participants/${participantId}/scoring-context`);
-  },
-  submit(sessionId, participantId, payload) {
-    return api.post(`/sessions/${sessionId}/participants/${participantId}/rubric-scores`, payload);
-  },
-  detail(scoreId) {
-    return api.get(`/rubric-scores/${scoreId}`);
-  },
-  approve(scoreId) {
-    return api.put(`/rubric-scores/${scoreId}/approve`, {});
-  },
-  release(scoreId) {
-    return api.put(`/rubric-scores/${scoreId}/release`, {});
-  },
-  dispute(scoreId, reason) {
-    return api.put(`/rubric-scores/${scoreId}/dispute`, { reason });
-  },
-  reopen(scoreId) {
-    return api.put(`/rubric-scores/${scoreId}/reopen`, {});
-  },
-};
-
-// Score states + their display treatment (neutral palette + teal accent).
-export const SCORE_STATES = {
-  pending_approval: { label: 'Pending approval', cls: 'bg-amber-50 text-amber-700' },
-  approved: { label: 'Approved', cls: 'bg-teal-50 text-teal-700' },
-  released: { label: 'Released', cls: 'bg-neutral-900 text-white' },
-  disputed: { label: 'Disputed', cls: 'bg-rose-50 text-rose-700' },
-};
-
-export const reportsApi = {
-  forLearner(learnerId) {
-    return api.get(`/learners/${learnerId}/report`);
-  },
-};
-
-export const exportsApi = {
-  list(cohortId) {
-    return api.get(`/cohorts/${cohortId}/exports`);
-  },
-  audit(cohortId) {
-    return api.get(`/cohorts/${cohortId}/audit`);
-  },
-  downloadScores(cohortId) {
-    return apiDownload(`/cohorts/${cohortId}/exports/scores.csv`, `cohort_scores_${cohortId}.csv`);
-  },
-  downloadFlightRecorder(cohortId) {
-    return apiDownload(`/cohorts/${cohortId}/exports/flight-recorder.csv`, `flight_recorder_${cohortId}.csv`);
-  },
-};
-
-// Student portal (student token).
-export const studentApi = {
-  sessions() {
-    return api.get('/student/me/sessions');
-  },
-  checkin(sessionId) {
-    return api.post(`/student/sessions/${sessionId}/checkin`, {});
-  },
-  results() {
-    return api.get('/student/me/results');
-  },
-  certificates() {
-    return api.get('/student/me/certificates');
-  },
-};
-
-// Certificates — staff issue/list + public verification.
-export const certificatesApi = {
-  issue(learnerId, payload) {
-    return api.post(`/learners/${learnerId}/certificates`, payload);
-  },
-  listForLearner(learnerId) {
-    return api.get(`/learners/${learnerId}/certificates`);
-  },
-  verify(code) {
-    return api.get(`/verify/${code}`);
-  },
-};
-
-export const ROLES = ['team_lead', 'airway_manager', 'compressor', 'documentation'];
-
-// Minimal CSV parser: header row + comma-separated values.
-// Recognised headers: firstName, lastName, email, externalId, phone.
+// Minimal CSV parser for the students import (header row + comma values).
 export function parseCsv(text) {
   const lines = text.trim().split(/\r?\n/).filter(Boolean);
   if (lines.length === 0) return [];
@@ -190,9 +99,7 @@ export function parseCsv(text) {
   return lines.slice(1).map((line) => {
     const cells = line.split(',').map((c) => c.trim());
     const row = {};
-    headers.forEach((h, i) => {
-      row[h] = cells[i] || '';
-    });
+    headers.forEach((h, i) => { row[h] = cells[i] || ''; });
     return row;
   });
 }

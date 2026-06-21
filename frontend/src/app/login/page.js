@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const homeFor = (u) => (u?.kind === 'student' ? '/portal' : '/dashboard');
+  const homeFor = () => '/dashboard';
 
   // Already logged in → skip the form (route by account type).
   useEffect(() => {
@@ -43,12 +43,7 @@ export default function LoginPage() {
     <AuthLayout
       title="Welcome back"
       subtitle="Sign in to your training workspace"
-      footer={
-        <div className="space-y-1">
-          <p>New organisation? <Link href="/signup" className="font-medium text-teal-700 hover:underline">Create an account</Link></p>
-          <p>Student? <Link href="/claim" className="font-medium text-teal-700 hover:underline">Set up your student login</Link></p>
-        </div>
-      }
+      footer={<>New organisation? <Link href="/signup" className="font-medium text-teal-700 hover:underline">Create an account</Link></>}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field

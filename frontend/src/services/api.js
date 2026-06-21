@@ -84,25 +84,8 @@ export const api = {
   get: (path) => request(path),
   post: (path, body) => request(path, { method: 'POST', body }),
   put: (path, body) => request(path, { method: 'PUT', body }),
+  del: (path) => request(path, { method: 'DELETE' }),
 };
-
-// Fetches a file endpoint with auth and triggers a browser download.
-export async function apiDownload(path, filename) {
-  const token = getToken();
-  const res = await fetch(`${API_URL}/api${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) throw new Error(`Download failed (${res.status})`);
-  const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
 
 export const auth = {
   async login(username, password) {
@@ -115,12 +98,6 @@ export const auth = {
   },
   async register(details) {
     const data = await request('/auth/register', { method: 'POST', body: details });
-    setSession(data);
-    return data.user;
-  },
-  // Student self-registration: claim a learner account by email.
-  async studentRegister(email, password) {
-    const data = await request('/auth/student/register', { method: 'POST', body: { email, password } });
     setSession(data);
     return data.user;
   },
