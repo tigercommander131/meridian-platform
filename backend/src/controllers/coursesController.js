@@ -19,8 +19,18 @@ function toDTO(row) {
     capacity: row.capacity,
     confirmedStudents: row.confirmed_students,
     waitlistCount: row.waitlist_count,
+    region: row.region,
     startDate: row.start_date,
     endDate: row.end_date,
+    groups: row.groups,
+    durationDays: row.duration_days,
+    externalRef: row.external_ref,
+    imported: row.imported,
+    instructorsAssigned: row.instructors_assigned,
+    courseDirectorAssigned: row.course_director_assigned,
+    medicalDirectorAssigned: row.medical_director_assigned,
+    cdQualified: row.cd_qualified,
+    mdDoctor: row.md_doctor,
     createdAt: row.created_at,
   };
 }

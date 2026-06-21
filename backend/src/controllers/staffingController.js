@@ -1,5 +1,5 @@
 import { query } from '../config/database.js';
-import { computeStaffing } from '../services/staffingEngine.js';
+import { computeStaffing, evaluate } from '../services/staffingEngine.js';
 import { resolveCurrentRules } from './accreditationController.js';
 
 const VALID_ROLES = ['instructor', 'course_director', 'medical_lead', 'doctor', 'assessor', 'instructor_candidate'];
@@ -43,10 +43,21 @@ export async function staffingFor(courseId) {
   }));
 }
 
-// Compliance for a course: resolve rules, run the engine over assigned staff.
-// Declined invitations don't count toward the requirement.
+// Compliance for a course: resolve rules, run the engine.
+// Imported courses store staffing as counts/flags (the operations spreadsheet);
+// native courses derive it from named, non-declined staffing assignments.
 export async function complianceFor(course) {
   const rules = await resolveCurrentRules(course.course_type_id);
+  if (course.imported) {
+    return evaluate({
+      ruleSet: rules,
+      groups: course.groups,
+      enrolled: course.confirmed_students,
+      instructors: course.instructors_assigned,
+      courseDirector: Boolean(course.course_director_assigned) && course.cd_qualified !== false,
+      medicalDirector: Boolean(course.medical_director_assigned) && course.md_doctor !== false,
+    });
+  }
   const assigned = await query(
     `SELECT role FROM course_staffing WHERE course_id = $1 AND invitation_status <> 'declined'`,
     [course.id]

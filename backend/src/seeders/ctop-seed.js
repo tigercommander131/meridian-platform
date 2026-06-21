@@ -7,8 +7,8 @@ import { query, getPool } from '../config/database.js';
 // Idempotent (stable, org-prefixed ids). Run: `npm run seed:ctop`.
 
 const ALS2_RULES = {
-  groupSize: 6, instructorsPerGroup: 2, courseDirectorRequired: true, medicalLeadRequired: true,
-  courseDirectorCanBeMedicalLead: true, extraDoctorWhenGroupsExceed: 2, countICsAsInstructors: false,
+  groupSize: 6, minStudentsPerGroup: 4, instructorsPerGroup: 1, minGroups: 2,
+  courseDirectorRequired: true, medicalDirectorRequired: true, courseDirectorCanBeMedicalDirector: true,
 };
 
 // crew: [key, first, last, region, employment, status, roles[], credExpiryInterval, availability{offset:status}]

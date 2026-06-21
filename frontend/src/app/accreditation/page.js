@@ -8,8 +8,8 @@ import { accreditationApi } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
 const DEFAULT_RULES = {
-  groupSize: 6, instructorsPerGroup: 2, courseDirectorRequired: true, medicalLeadRequired: true,
-  courseDirectorCanBeMedicalLead: true, extraDoctorWhenGroupsExceed: 2, countICsAsInstructors: false,
+  groupSize: 6, minStudentsPerGroup: 4, instructorsPerGroup: 1, minGroups: 1,
+  courseDirectorRequired: false, medicalDirectorRequired: true, courseDirectorCanBeMedicalDirector: true,
 };
 
 function RuleEditor({ courseTypes }) {
@@ -48,15 +48,15 @@ function RuleEditor({ courseTypes }) {
         <>
           <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-4">
-              <Field label="Students per group"><Input type="number" min="1" value={rules.groupSize} onChange={num('groupSize')} className="w-28" /></Field>
+              <Field label="Students per group (max)"><Input type="number" min="1" value={rules.groupSize} onChange={num('groupSize')} className="w-28" /></Field>
+              <Field label="Min students per group"><Input type="number" min="1" value={rules.minStudentsPerGroup} onChange={num('minStudentsPerGroup')} className="w-28" /></Field>
               <Field label="Instructors per group"><Input type="number" min="1" value={rules.instructorsPerGroup} onChange={num('instructorsPerGroup')} className="w-28" /></Field>
-              <Field label="Extra doctor when groups exceed"><Input type="number" min="0" value={rules.extraDoctorWhenGroupsExceed} onChange={num('extraDoctorWhenGroupsExceed')} className="w-28" /></Field>
+              <Field label="Minimum groups"><Input type="number" min="1" value={rules.minGroups} onChange={num('minGroups')} className="w-28" /></Field>
             </div>
             <div className="space-y-2.5 rounded-xl bg-[var(--surface-2)] p-4 text-sm text-[var(--ink-2)]">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.courseDirectorRequired} onChange={bool('courseDirectorRequired')} className="accent-teal-700" /> Course director required</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.medicalLeadRequired} onChange={bool('medicalLeadRequired')} className="accent-teal-700" /> Medical lead required</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.courseDirectorCanBeMedicalLead} onChange={bool('courseDirectorCanBeMedicalLead')} className="accent-teal-700" /> Course director can be the medical lead</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.countICsAsInstructors} onChange={bool('countICsAsInstructors')} className="accent-teal-700" /> Count candidates as instructors</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.courseDirectorRequired} onChange={bool('courseDirectorRequired')} className="accent-[var(--accent)]" /> Course Director required</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.medicalDirectorRequired} onChange={bool('medicalDirectorRequired')} className="accent-[var(--accent)]" /> Medical Director required (must be a doctor)</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={rules.courseDirectorCanBeMedicalDirector} onChange={bool('courseDirectorCanBeMedicalDirector')} className="accent-[var(--accent)]" /> Course Director can also be the Medical Director</label>
             </div>
           </div>
           <Button onClick={save} className="mt-5">Save new version</Button>

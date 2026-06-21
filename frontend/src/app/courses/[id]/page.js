@@ -141,6 +141,35 @@ function ManifestRow({ s, courseId, onChanged }) {
   );
 }
 
+function YesNo({ ok, label, sub }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-[var(--line)] px-3 py-2">
+      <div><p className="text-sm text-[var(--ink)]">{label}</p>{sub && <p className="text-[11px] text-[var(--ink-3)]">{sub}</p>}</div>
+      <Badge tone={ok ? 'teal' : 'rose'} dot>{ok ? 'Yes' : 'No'}</Badge>
+    </div>
+  );
+}
+
+function ImportedStaffing({ course, compliance }) {
+  const als2 = compliance?.required?.medical_lead > 0;
+  const instrOk = (course.instructorsAssigned || 0) >= (compliance?.required?.instructors || 0);
+  return (
+    <Card>
+      <CardHeader title="Staffing & enrolment" subtitle="Imported from the operations spreadsheet — tracked as counts." />
+      <div className="grid grid-cols-3 gap-3 border-b border-[var(--line)] pb-4 font-mono text-sm">
+        <div><p className="lbl">Enrolled</p><p className="mt-1 text-[var(--ink)]">{course.confirmedStudents}/{course.capacity}</p></div>
+        <div><p className="lbl">Groups</p><p className="mt-1 text-[var(--ink)]">{course.groups}</p></div>
+        <div><p className="lbl">Waitlist</p><p className="mt-1 text-[var(--ink)]">{course.waitlistCount || 0}</p></div>
+      </div>
+      <div className="mt-4 space-y-2">
+        <YesNo ok={instrOk} label="Instructors" sub={`${course.instructorsAssigned || 0} assigned · ${compliance?.required?.instructors || 0} required`} />
+        {als2 && <YesNo ok={Boolean(course.courseDirectorAssigned) && course.cdQualified !== false} label="Course Director" sub={course.courseDirectorAssigned ? (course.cdQualified === false ? 'assigned · not accredited' : 'assigned · accredited') : 'not assigned'} />}
+        {als2 && <YesNo ok={Boolean(course.medicalDirectorAssigned) && course.mdDoctor !== false} label="Medical Director" sub={course.medicalDirectorAssigned ? (course.mdDoctor === false ? 'assigned · not a doctor' : 'assigned · doctor') : 'not assigned'} />}
+      </div>
+    </Card>
+  );
+}
+
 function CourseDetail() {
   const { id } = useParams();
   const [course, setCourse] = useState(null);
@@ -201,6 +230,7 @@ function CourseDetail() {
           </Card>
         </div>
 
+        {course.imported ? <ImportedStaffing course={course} compliance={compliance} /> : (
         <Card>
           <CardHeader title="Crew manifest" subtitle="Assign crew, send invitations, track responses."
             action={<Button size="sm" onClick={() => setAdding((v) => !v)}>{adding ? 'Done' : 'Add crew'}</Button>} />
@@ -219,6 +249,7 @@ function CourseDetail() {
             </p>
           )}
         </Card>
+        )}
       </div>
     </>
   );
