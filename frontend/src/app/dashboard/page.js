@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import { Skeleton, Icon, Button } from '@/components/ui/kit';
@@ -10,8 +10,8 @@ import CourseFilters from '@/components/ui/CourseFilters';
 import ColumnPicker from '@/components/ui/ColumnPicker';
 import AdaptableCourseTable from '@/components/ops/AdaptableCourseTable';
 import { useAuth } from '@/hooks/useAuth';
-import { dashboardApi, fmtDate, fmtDateRange, flight, station, filterCourses, emptyCourseFilter,
-  inferFields, DEFAULT_BOARD_COLS, loadCols, saveCols } from '@/services/data';
+import { dashboardApi, fmtDate, fmtDateRange, flight, station, emptyCourseFilter, courseFilterActive, COURSE_WINDOWS,
+  buildFields, DEFAULT_BOARD_COLS, loadCols, saveCols } from '@/services/data';
 
 function useClock() {
   const [t, setT] = useState(null);
@@ -20,14 +20,6 @@ function useClock() {
 }
 
 const GRID = 'grid-cols-[7rem_1fr_auto] sm:grid-cols-[6.5rem_7rem_8.5rem_4.5rem_4.5rem_4rem_7rem]';
-const RANK = { compliance_risk: 0, staffing_risk: 1, viability_risk: 2, planning: 3, ready: 4, delivered: 5 };
-const BOARD_ACC = {
-  type: (c) => c.courseTypeCode || c.courseType || '',
-  region: (c) => c.region || '',
-  status: (c) => c.compliance.status,
-  date: (c) => c.startDate,
-  search: (c) => `${c.courseTypeCode || ''} ${c.region || ''} ${c.name || ''} ${c.externalRef || ''}`,
-};
 
 function Tile({ label, value, lamp, hint }) {
   return (
@@ -76,31 +68,41 @@ function CourseRow({ c }) {
 
 function DashboardContent() {
   const { user } = useAuth();
-  const [courses, setCourses] = useState(null);
-  const [limit, setLimit] = useState(12);
+  const [data, setData] = useState(null);   // { courses, total, stats, facets, fieldKeys }
+  const [limit, setLimit] = useState(25);
   const [filter, setFilter] = useState(emptyCourseFilter());
+  const [loading, setLoading] = useState(true);
   const [cols, setCols] = useState(null);
   const clock = useClock();
 
-  useEffect(() => { dashboardApi.get().then((r) => setCourses(r.courses)).catch(() => setCourses([])); }, []);
+  // Server-side: filter + sort + paginate happen in SQL; we fetch one page.
+  const fetchPage = useCallback(async (f, lim) => {
+    setLoading(true);
+    const days = COURSE_WINDOWS.find((w) => w.key === f.when)?.days ?? null;
+    try {
+      const r = await dashboardApi.get({ limit: lim, offset: 0, q: f.q, type: f.type, region: f.region, status: f.status, window: days ?? undefined });
+      setData(r);
+    } catch { setData({ courses: [], total: 0, stats: {}, facets: {}, fieldKeys: [] }); }
+    finally { setLoading(false); }
+  }, []);
+  useEffect(() => { fetchPage(filter, limit); }, [filter, limit, fetchPage]);
 
-  const list = courses || [];
-  const hasAttrs = list.some((c) => c.attributes && Object.keys(c.attributes).length > 0);
-  const fields = useMemo(() => (hasAttrs ? inferFields(list) : []), [hasAttrs, courses]);
+  const onFilter = (v) => { setLimit(25); setFilter(v); };
+
+  const list = data?.courses || [];
+  const stats = data?.stats || {};
+  const total = data?.total ?? 0;
+  const hasAttrs = (data?.fieldKeys?.length || 0) > 0;
+  const fields = useMemo(() => (hasAttrs ? buildFields(data?.fieldKeys, list) : []), [hasAttrs, data]);
   const colKey = `ctop:boardcols:${user.organisationId}`;
   useEffect(() => {
-    if (!hasAttrs || cols !== null) return;
+    if (!hasAttrs || cols !== null || fields.length === 0) return;
     const present = new Set(fields.map((f) => f.key));
     const def = DEFAULT_BOARD_COLS.filter((k) => present.has(k));
     setCols(loadCols(colKey, def.length ? def : fields.slice(0, 6).map((f) => f.key)));
   }, [hasAttrs, fields, cols, colKey]);
   const setColsPersist = (next) => { setCols(next); saveCols(colKey, next); };
-  const cleared = list.filter((c) => c.compliance.status === 'ready').length;
-  const atRisk = list.filter((c) => ['compliance_risk', 'staffing_risk', 'viability_risk'].includes(c.compliance.status)).length;
-  const gaps = list.reduce((n, c) => n + (c.crew ? Math.max(0, c.crew.required - c.crew.assigned) : 0), 0);
-  const filtered = filterCourses(list, filter, BOARD_ACC);
-  const sorted = [...filtered].sort((a, b) => (RANK[a.compliance.status] ?? 9) - (RANK[b.compliance.status] ?? 9));
-  const shown = sorted.slice(0, limit);
+  const shown = list;  // server already returns the page in risk order
 
   return (
     <>
@@ -116,10 +118,10 @@ function DashboardContent() {
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label="Active" value={courses ? list.length : '—'} />
-        <Tile label="Cleared" value={courses ? cleared : '—'} lamp="go" />
-        <Tile label="At risk" value={courses ? atRisk : '—'} lamp={atRisk ? 'stop' : 'idle'} />
-        <Tile label="Instructor gaps" value={courses ? gaps : '—'} lamp={gaps ? 'warn' : 'idle'} hint={gaps ? 'roles unfilled' : 'fully staffed'} />
+        <Tile label="Active" value={data ? stats.total : '—'} />
+        <Tile label="Cleared" value={data ? stats.cleared : '—'} lamp="go" />
+        <Tile label="At risk" value={data ? stats.atRisk : '—'} lamp={stats.atRisk ? 'stop' : 'idle'} />
+        <Tile label="Waitlisted" value={data ? stats.waitlisted : '—'} lamp={stats.waitlisted ? 'warn' : 'idle'} hint={stats.waitlisted ? 'students waiting' : 'none waiting'} />
       </div>
 
       {/* AI operations report */}
@@ -130,7 +132,7 @@ function DashboardContent() {
           <div className="flex items-center gap-2.5">
             <Icon d={['M4 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zM14 3v5h5']} className="h-5 w-5 text-[var(--accent)]" strokeWidth={2} />
             <span className="font-mono text-sm font-bold tracking-widest text-board-ink">COURSES</span>
-            {courses && <span className="font-mono text-[11px] text-[var(--board-ink-2)]">{list.length}</span>}
+            {data && <span className="font-mono text-[11px] text-[var(--board-ink-2)]">{total}</span>}
           </div>
           <div className="flex items-center gap-3">
             {hasAttrs && cols && <ColumnPicker fields={fields} value={cols} onChange={setColsPersist} variant="board" max={10} />}
@@ -142,8 +144,8 @@ function DashboardContent() {
           </div>
         </div>
 
-        {courses && list.length > 0 && (
-          <CourseFilters courses={list} value={filter} onChange={(v) => { setFilter(v); setLimit(12); }} acc={BOARD_ACC} variant="board" count={filtered.length} total={list.length} />
+        {data && (
+          <CourseFilters value={filter} onChange={onFilter} options={data.facets} variant="board" count={list.length} total={total} />
         )}
 
         {!hasAttrs && (
@@ -152,24 +154,22 @@ function DashboardContent() {
           </div>
         )}
 
-        {courses === null ? (
+        {!data ? (
           <div className="space-y-px p-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full bg-white/5" />)}</div>
-        ) : list.length === 0 ? (
-          <p className="px-4 py-10 text-center font-mono text-sm text-[var(--board-ink-2)]">NO COURSES — create one to begin.</p>
-        ) : filtered.length === 0 ? (
-          <p className="px-4 py-10 text-center font-mono text-sm text-[var(--board-ink-2)]">NO MATCH — adjust the filters.</p>
+        ) : total === 0 ? (
+          <p className="px-4 py-10 text-center font-mono text-sm text-[var(--board-ink-2)]">{courseFilterActive(filter) ? 'NO MATCH — adjust the filters.' : 'NO COURSES — create one to begin.'}</p>
         ) : hasAttrs ? (
           cols && <AdaptableCourseTable courses={shown} fields={fields} cols={cols} />
         ) : (
           shown.map((c) => <CourseRow key={c.id} c={c} />)
         )}
 
-        {courses && filtered.length > 12 && (
+        {data && total > 25 && (
           <div className="flex items-center justify-center gap-2 px-4 py-3">
-            {limit < sorted.length && <button onClick={() => setLimit((n) => n + 25)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">SHOW MORE</button>}
-            {limit < sorted.length && <button onClick={() => setLimit(sorted.length)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">· SHOW ALL ·</button>}
-            {limit > 12 && <button onClick={() => setLimit(12)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">SHOW LESS</button>}
-            <span className="font-mono text-[10px] text-[var(--board-ink-2)]">showing {Math.min(limit, sorted.length)}/{sorted.length}</span>
+            {list.length < total && <button onClick={() => setLimit((n) => n + 25)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">SHOW MORE</button>}
+            {list.length < total && <button onClick={() => setLimit(total)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">· SHOW ALL ·</button>}
+            {limit > 25 && <button onClick={() => setLimit(25)} className="font-mono text-xs text-[var(--board-ink-2)] hover:text-board-ink">SHOW LESS</button>}
+            <span className="font-mono text-[10px] text-[var(--board-ink-2)]">showing {list.length}/{total}{loading ? ' …' : ''}</span>
           </div>
         )}
       </div>

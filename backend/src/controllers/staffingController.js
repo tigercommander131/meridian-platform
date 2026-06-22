@@ -226,19 +226,61 @@ export async function suggestCandidates(req, res, next) {
   } catch (err) { next(err); }
 }
 
+// Risk-first ordering used by both the SQL page query and the board.
+const STATUS_RANK_SQL = `CASE c.status WHEN 'compliance_risk' THEN 0 WHEN 'staffing_risk' THEN 1 WHEN 'viability_risk' THEN 2 WHEN 'planning' THEN 3 WHEN 'ready' THEN 4 WHEN 'delivered' THEN 5 ELSE 9 END`;
+
 // GET /api/organisations/:orgId/dashboard — courses needing attention.
+// Server-side filtered + sorted + paginated (so a 2000-course org ships one page,
+// not the whole set). Aggregate stats/facets computed in SQL. Backward compatible:
+// with no `limit` it returns every matching course (legacy behaviour).
 export async function opsDashboard(req, res, next) {
   try {
     if (req.params.orgId !== req.user.organisationId) {
       return res.status(403).json({ error: 'Cannot read another organisation', code: 'FORBIDDEN', status: 403 });
     }
-    const courses = await query(
-      `SELECT c.*, ct.name AS course_type_name, ct.code AS course_type_code FROM courses c
-       LEFT JOIN course_types ct ON ct.id = c.course_type_id
-       WHERE c.organisation_id = $1 AND c.status NOT IN ('closed', 'cancelled')
-       ORDER BY c.start_date NULLS LAST`,
-      [req.params.orgId]
+    const orgId = req.params.orgId;
+    const { q, type, region, status, window } = req.query;
+    const paged = req.query.limit != null;
+
+    const params = [orgId];
+    const where = [`c.organisation_id = $1`, `c.status NOT IN ('closed', 'cancelled')`];
+    const P = (v) => { params.push(v); return `$${params.length}`; };
+    if (type) where.push(`ct.code = ${P(type)}`);
+    if (region) where.push(`c.region = ${P(region)}`);
+    if (status) where.push(`c.status = ${P(status)}`);
+    if (q) { const p = P(`%${q}%`); where.push(`(c.name ILIKE ${p} OR c.region ILIKE ${p} OR c.external_ref ILIKE ${p})`); }
+    if (window) { const d = parseInt(window, 10); if (d > 0) where.push(`c.start_date >= CURRENT_DATE AND c.start_date <= CURRENT_DATE + ${P(d)}`); }
+    const whereSql = where.join(' AND ');
+
+    // Aggregate stats over the full filtered set (cheap, no per-course work).
+    const statsRow = await query(
+      `SELECT COUNT(*)::int AS total,
+              COUNT(*) FILTER (WHERE c.status = 'ready')::int AS cleared,
+              COUNT(*) FILTER (WHERE c.status IN ('compliance_risk','staffing_risk','viability_risk'))::int AS at_risk,
+              COALESCE(SUM(c.waitlist_count),0)::int AS waitlisted
+       FROM courses c LEFT JOIN course_types ct ON ct.id = c.course_type_id WHERE ${whereSql}`,
+      params
     );
+    const stats = { total: statsRow.rows[0].total, cleared: statsRow.rows[0].cleared, atRisk: statsRow.rows[0].at_risk, waitlisted: statsRow.rows[0].waitlisted };
+
+    // Filter dropdown options + attribute field keys (org-wide, not page-bound).
+    const facetsRow = await query(
+      `SELECT ARRAY(SELECT DISTINCT ct.code FROM courses c LEFT JOIN course_types ct ON ct.id = c.course_type_id WHERE c.organisation_id = $1 AND ct.code IS NOT NULL ORDER BY ct.code) AS types,
+              ARRAY(SELECT DISTINCT region FROM courses WHERE organisation_id = $1 AND region IS NOT NULL ORDER BY region) AS regions,
+              ARRAY(SELECT DISTINCT status FROM courses WHERE organisation_id = $1 AND status NOT IN ('closed','cancelled') ORDER BY status) AS statuses`,
+      [orgId]
+    );
+    const keysRow = await query(
+      `SELECT DISTINCT jsonb_object_keys(attributes) AS k FROM (SELECT attributes FROM courses WHERE organisation_id = $1 AND attributes <> '{}'::jsonb LIMIT 300) s ORDER BY k`,
+      [orgId]
+    );
+
+    let pageSql = `SELECT c.*, ct.name AS course_type_name, ct.code AS course_type_code FROM courses c
+       LEFT JOIN course_types ct ON ct.id = c.course_type_id
+       WHERE ${whereSql} ORDER BY ${STATUS_RANK_SQL}, c.start_date NULLS LAST`;
+    if (paged) pageSql += ` LIMIT ${P(Math.min(parseInt(req.query.limit, 10) || 50, 200))} OFFSET ${P(parseInt(req.query.offset, 10) || 0)}`;
+    const courses = await query(pageSql, params);
+
     const rows = [];
     for (const c of courses.rows) {
       const compliance = await complianceFor(c);
@@ -266,9 +308,13 @@ export async function opsDashboard(req, res, next) {
         compliance: { status: compliance.status, missing: compliance.missing, explanation: compliance.explanation },
       });
     }
-    // Surface at-risk first.
-    const rank = { compliance_risk: 0, staffing_risk: 1, viability_risk: 2, planning: 3, ready: 4 };
-    rows.sort((a, b) => (rank[a.compliance.status] ?? 9) - (rank[b.compliance.status] ?? 9));
-    res.json({ courses: rows });
+    // Rows already come back risk-first from SQL.
+    res.json({
+      courses: rows,
+      total: stats.total,
+      stats,
+      facets: { types: facetsRow.rows[0].types, regions: facetsRow.rows[0].regions, statuses: facetsRow.rows[0].statuses },
+      fieldKeys: keysRow.rows.map((r) => r.k),
+    });
   } catch (err) { next(err); }
 }

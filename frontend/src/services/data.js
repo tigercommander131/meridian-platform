@@ -78,7 +78,11 @@ export const invitationsApi = {
 };
 
 export const dashboardApi = {
-  get() { return api.get(`/organisations/${orgId()}/dashboard`); },
+  get(params = {}) {
+    const entries = Object.entries(params).filter(([, v]) => v != null && v !== '');
+    const qs = new URLSearchParams(entries).toString();
+    return api.get(`/organisations/${orgId()}/dashboard${qs ? `?${qs}` : ''}`);
+  },
 };
 
 export const reportApi = {
@@ -212,6 +216,15 @@ export function inferFields(courses) {
     }
   }
   return [...vals.entries()].map(([key, v]) => ({ key, label: key, type: inferFieldType(key, v) }));
+}
+
+// Build the field registry from server-provided keys (types inferred from
+// whatever rows are loaded; defaults to text when a key isn't present in them).
+export function buildFields(fieldKeys, courses = []) {
+  if (!fieldKeys || fieldKeys.length === 0) return inferFields(courses);
+  const vals = new Map();
+  for (const c of courses) { const a = c.attributes || {}; for (const k of fieldKeys) { if (!vals.has(k)) vals.set(k, []); if (a[k] != null) vals.get(k).push(a[k]); } }
+  return fieldKeys.map((k) => ({ key: k, label: k, type: inferFieldType(k, vals.get(k) || []) }));
 }
 
 export function formatAttr(v, type) {

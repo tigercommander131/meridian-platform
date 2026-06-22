@@ -6,10 +6,11 @@ import { COURSE_WINDOWS, distinct, statusLabel, courseFilterActive, emptyCourseF
 // Shared course filter bar. `acc` supplies field accessors (so it works for both
 // the card list and the board); `variant` switches between the light page and the
 // dark departures board.
-export default function CourseFilters({ courses = [], value, onChange, acc, variant = 'light', count, total }) {
-  const types = distinct(courses, acc.type);
-  const regions = distinct(courses, acc.region);
-  const statuses = distinct(courses, acc.status);
+export default function CourseFilters({ courses = [], value, onChange, acc, options, variant = 'light', count, total }) {
+  // Prefer server-provided facet lists (paginated callers); else derive from the loaded set.
+  const types = options?.types ?? distinct(courses, acc.type);
+  const regions = options?.regions ?? distinct(courses, acc.region);
+  const statuses = options?.statuses ?? distinct(courses, acc.status);
   const set = (k) => (e) => onChange({ ...value, [k]: e.target.value });
   const active = courseFilterActive(value);
 
