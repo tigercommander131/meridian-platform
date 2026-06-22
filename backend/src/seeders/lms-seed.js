@@ -102,7 +102,10 @@ async function seed() {
     const roles = ['instructor'];
     if (i.cd) roles.push('course_director');
     if (i.md || i.profession === 'Doctor') { roles.push('medical_lead'); roles.push('doctor'); }
-    return ['lmscred_' + String(i.ref).replace(/-/g, '_'), insId(i.ref), ACCRED, [T_ALS1, T_ALS2], roles, i.expiry || null];
+    // pg-format %L expands JS arrays into separate literals — pass TEXT[] as a
+    // Postgres array-literal string instead (values are safe identifiers/words).
+    const arrLit = (a) => '{' + a.join(',') + '}';
+    return ['lmscred_' + String(i.ref).replace(/-/g, '_'), insId(i.ref), ACCRED, arrLit([T_ALS1, T_ALS2]), arrLit(roles), i.expiry || null];
   });
   for (let i = 0; i < credRows.length; i += 200) {
     await query(pgformat(

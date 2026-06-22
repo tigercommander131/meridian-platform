@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Card, Button, Badge, Spinner, Icon, cx } from '@/components/ui/kit';
 import { reportApi, fmtDate } from '@/services/data';
 import { toast } from '@/stores/toastStore';
@@ -82,6 +82,7 @@ export default function OpsReport() {
   const [showBriefing, setShowBriefing] = useState(false);
   const [win, setWin] = useState('all');
   const [fix, setFix] = useState(null);
+  const router = useRouter();
 
   async function run() {
     setBusy(true);
@@ -190,8 +191,10 @@ export default function OpsReport() {
                   {shown.map((f, i) => {
                     const s = sev(f.severity);
                     return (
-                      <Link key={i} href={`/courses/${f.courseId}`}
-                        className="group block rounded-xl border border-[var(--line)] p-3 transition-all hover:border-[color:var(--accent)]/40 hover:shadow-soft">
+                      <div key={i} role="link" tabIndex={0}
+                        onClick={() => router.push(`/courses/${f.courseId}`)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') router.push(`/courses/${f.courseId}`); }}
+                        className="group block cursor-pointer rounded-xl border border-[var(--line)] p-3 transition-all hover:border-[color:var(--accent)]/40 hover:shadow-soft">
                         <div className="flex items-start gap-3">
                           <span className={cx('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', s.chip)}>
                             <Icon d={typeIcon(f.type)} className="h-[18px] w-[18px]" />
@@ -216,7 +219,7 @@ export default function OpsReport() {
                             <span className="text-[var(--ink-3)] transition-colors group-hover:text-[var(--accent)]"><Icon d="M9 6l6 6-6 6" className="h-4 w-4" /></span>
                           </div>
                         </div>
-                      </Link>
+                      </div>
                     );
                   })}
                 </div>

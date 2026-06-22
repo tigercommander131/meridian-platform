@@ -1,8 +1,18 @@
 import { query } from '../config/database.js';
 import { complianceFor } from './staffingController.js';
+import { resolveCurrentRules } from './accreditationController.js';
+import { evaluate } from '../services/staffingEngine.js';
 import { sendEmail, emailEnabled, invitationTemplate } from '../services/emailService.js';
 import { config } from '../config/environment.js';
 import crypto from 'crypto';
+
+// Reverse of staffingController's SHEET_STATUS — used to refresh an imported
+// course's stored Operational Status after AI mutations so the board + the
+// sheet-status override reflect the change.
+const ENG_TO_SHEET = {
+  ready: 'Ready to Run', staffing_risk: 'At Risk',
+  compliance_risk: 'Critical Intervention', viability_risk: 'Recruit Students / Consider Merge',
+};
 
 // AI course actions — a deterministic planner that proposes concrete fixes for a
 // single course (who to contact, what to change), and an apply step that the user
@@ -62,7 +72,7 @@ async function planFor(course, orgId) {
       actions.push({ id: `invite_instructor:${c.instructorId}`, type: 'invite_instructor', severity: 'high',
         label: `Invite ${c.name} as Instructor`,
         detail: `${c.tier} · ${c.availability} availability${c.region ? ` · ${c.region}` : ''}. Sends an invitation (email) to confirm.`,
-        who: c.name, email: c.email, role: 'instructor' });
+        who: c.name, role: 'instructor' });
     }
     if (pool.length < instrShort) {
       actions.push({ id: 'instr_shortfall', type: 'note', severity: 'high', label: `${instrShort - pool.length} more instructor(s) still needed`,
@@ -74,7 +84,7 @@ async function planFor(course, orgId) {
     const pool = await candidates(orgId, course, 'course_director', 1);
     const c = pool[0];
     if (c) actions.push({ id: `assign_course_director:${c.instructorId}`, type: 'assign_course_director', severity: 'high',
-      label: `Assign ${c.name} as Course Director`, detail: `Accredited CD · ${c.tier}. Sends an invitation to confirm.`, who: c.name, email: c.email, role: 'course_director' });
+      label: `Assign ${c.name} as Course Director`, detail: `Accredited CD · ${c.tier}. Sends an invitation to confirm.`, who: c.name, role: 'course_director' });
     else actions.push({ id: 'cd_none', type: 'note', severity: 'high', label: 'No accredited Course Director available', detail: 'No eligible CD in the pool — recruit one.', disabled: true });
   }
 
@@ -82,7 +92,7 @@ async function planFor(course, orgId) {
     const pool = await candidates(orgId, course, 'medical_lead', 1);
     const c = pool[0];
     if (c) actions.push({ id: `assign_medical_director:${c.instructorId}`, type: 'assign_medical_director', severity: 'high',
-      label: `Assign ${c.name} as Medical Director`, detail: `Registered doctor · ${c.tier}. Sends an invitation to confirm.`, who: c.name, email: c.email, role: 'medical_lead' });
+      label: `Assign ${c.name} as Medical Director`, detail: `Registered doctor · ${c.tier}. Sends an invitation to confirm.`, who: c.name, role: 'medical_lead' });
     else actions.push({ id: 'md_none', type: 'note', severity: 'high', label: 'No eligible Medical Director (doctor) available', detail: 'No eligible doctor in the pool — recruit one.', disabled: true });
   }
 
@@ -183,11 +193,16 @@ export async function aiApply(req, res, next) {
         const cap = course.capacity || 18;
         const move = Math.min(wl, cap);
         if (move > 0) {
+          const extraAttrs = course.imported ? {
+            'Course Type': course.course_type_code, 'Centre': course.region, 'Region': course.attributes?.Region || course.region,
+            'Capacity': cap, 'Enrolled': move, 'Waitlist': 0, 'Groups': course.groups,
+            'Operational Status': 'Recruit Students / Consider Merge', 'Risk Rating': 'Moderate',
+          } : {};
           const nc = await query(
-            `INSERT INTO courses (organisation_id, name, accreditation_org_id, course_type_id, region, capacity, confirmed_students, status, groups, duration_days, imported)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,'planning',$8,$9,$10) RETURNING id`,
+            `INSERT INTO courses (organisation_id, name, accreditation_org_id, course_type_id, region, capacity, confirmed_students, status, groups, duration_days, imported, attributes)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,'planning',$8,$9,$10,$11) RETURNING id`,
             [orgId, `${course.course_type_code || course.name} — ${course.region || 'extra'} (extra)`, course.accreditation_org_id, course.course_type_id,
-             course.region, cap, move, course.groups, course.duration_days, course.imported]
+             course.region, cap, move, course.groups, course.duration_days, course.imported, JSON.stringify(extraAttrs)]
           );
           await query(`UPDATE courses SET waitlist_count = COALESCE(waitlist_count,0) - $2 WHERE id = $1`, [course.id, move]);
           results.push({ ok: true, message: `Opened extra course (${nc.rows[0].id}) with ${move} promoted student(s)`, newCourseId: nc.rows[0].id });
@@ -197,10 +212,31 @@ export async function aiApply(req, res, next) {
 
     // Recompute + persist this course's status after the changes.
     const fresh = await courseRow(course.id, orgId);
-    const compliance = await complianceFor(fresh);
-    await query(`UPDATE courses SET status = $1 WHERE id = $2`, [compliance.status, course.id]);
-    await audit(orgId, req.user.sub, course.id, { applied: results.map((r) => r.message), status: compliance.status });
+    let status;
+    if (fresh.imported) {
+      // Drive status from the engine on the fresh counts, and sync the stored
+      // attributes so the adaptable board (which renders attributes) and the
+      // sheet-status override both reflect the fix.
+      const rules = await resolveCurrentRules(fresh.course_type_id);
+      const eng = evaluate({
+        ruleSet: rules, groups: fresh.groups, enrolled: fresh.confirmed_students, instructors: fresh.instructors_assigned,
+        courseDirector: Boolean(fresh.course_director_assigned) && fresh.cd_qualified !== false,
+        medicalDirector: Boolean(fresh.medical_director_assigned) && fresh.md_doctor !== false,
+      });
+      status = eng.status;
+      const patch = {
+        'Enrolled': fresh.confirmed_students, 'Waitlist': fresh.waitlist_count, 'Instructors Assigned': fresh.instructors_assigned,
+        'Operational Status': ENG_TO_SHEET[status] || 'At Risk', 'Can Run': eng.canRun ? 'Yes' : 'No',
+      };
+      if (fresh.course_director_assigned) patch['Course Director Assigned'] = 'Yes';
+      if (fresh.medical_director_assigned) patch['Medical Director Assigned'] = 'Yes';
+      await query(`UPDATE courses SET attributes = attributes || $1::jsonb, status = $2 WHERE id = $3`, [JSON.stringify(patch), status, course.id]);
+    } else {
+      status = (await complianceFor(fresh)).status;
+      await query(`UPDATE courses SET status = $1 WHERE id = $2`, [status, course.id]);
+    }
+    await audit(orgId, req.user.sub, course.id, { applied: results.map((r) => r.message), status });
 
-    res.json({ courseId: course.id, applied: results, status: compliance.status });
+    res.json({ courseId: course.id, applied: results, status });
   } catch (err) { next(err); }
 }

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import { listRuleSets, createRuleSet } from '../controllers/accreditationController.js';
 import {
   getInstructor, updateInstructor, addCredential,
@@ -41,7 +42,9 @@ router.delete('/courses/:courseId/staffing/:staffingId', authenticate, requireRo
 router.post('/courses/:courseId/staffing/:staffingId/invite', authenticate, requireRole(...WRITE), sendInvitation);
 
 // AI course actions — propose fixes, then apply the confirmed ones.
+// Apply has real side-effects (DB writes + outbound email), so throttle it.
+const aiApplyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many AI-apply requests', code: 'RATE_LIMITED', status: 429 } });
 router.get('/courses/:courseId/ai-plan', authenticate, aiPlan);
-router.post('/courses/:courseId/ai-apply', authenticate, requireRole(...WRITE), aiApply);
+router.post('/courses/:courseId/ai-apply', authenticate, requireRole(...WRITE), aiApplyLimiter, aiApply);
 
 export default router;
