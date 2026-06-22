@@ -5,6 +5,7 @@ import {
   listAvailability, setAvailability, removeAvailability, addIcProgress,
 } from '../controllers/instructorsController.js';
 import { getStaffing, assignStaff, removeStaff, suggestCandidates } from '../controllers/staffingController.js';
+import { aiPlan, aiApply } from '../controllers/courseActionsController.js';
 import { sendInvitation } from '../controllers/invitationsController.js';
 import { authenticate, requireRole } from '../middleware/auth.js';
 
@@ -38,5 +39,9 @@ router.delete('/courses/:courseId/staffing/:staffingId', authenticate, requireRo
 
 // Invitation workflow (send / resend).
 router.post('/courses/:courseId/staffing/:staffingId/invite', authenticate, requireRole(...WRITE), sendInvitation);
+
+// AI course actions — propose fixes, then apply the confirmed ones.
+router.get('/courses/:courseId/ai-plan', authenticate, aiPlan);
+router.post('/courses/:courseId/ai-apply', authenticate, requireRole(...WRITE), aiApply);
 
 export default router;

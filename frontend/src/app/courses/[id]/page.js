@@ -7,6 +7,7 @@ import AppShell from '@/components/layout/AppShell';
 import ComplianceMeter from '@/components/ui/ComplianceMeter';
 import { Card, CardHeader, Button, Badge, Field, Input, Select, Avatar, Icon, Spinner } from '@/components/ui/kit';
 import { FlightStatus, Station, Lamp, Stamp } from '@/components/ui/aviation';
+import AiFixPanel from '@/components/ops/AiFixPanel';
 import {
   coursesApi, staffingApi, STAFF_ROLES, roleLabel, fmtDate, fmtDateRange, station,
   TIER_META, AVAIL_META, INVITE_META,
@@ -177,6 +178,7 @@ function CourseDetail() {
   const [compliance, setCompliance] = useState(null);
   const [students, setStudents] = useState('');
   const [adding, setAdding] = useState(false);
+  const [showFix, setShowFix] = useState(false);
 
   const applyStaffing = useCallback((r) => { setStaffing(r.staffing); setCompliance(r.compliance); }, []);
   const loadStaffing = useCallback(async () => { applyStaffing(await staffingApi.get(id)); }, [id, applyStaffing]);
@@ -220,6 +222,11 @@ function CourseDetail() {
 
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[20rem_1fr]">
         <div className="space-y-5">
+          {compliance && compliance.status !== 'ready' && (
+            <Button className="w-full" onClick={() => setShowFix(true)}>
+              <Icon d={['M12 3l1.9 5.8H20l-4.9 3.6 1.9 5.8L12 14.6 7 18.2l1.9-5.8L4 8.8h6.1z']} className="h-4 w-4" /> Let AI fix this course
+            </Button>
+          )}
           <Clearance compliance={compliance} />
           <Card>
             <CardHeader title="Confirmed students" subtitle="Drives the crew calculation" />
@@ -251,6 +258,17 @@ function CourseDetail() {
         </Card>
         )}
       </div>
+
+      {showFix && (
+        <AiFixPanel
+          courseId={id} courseName={course.name}
+          onClose={() => setShowFix(false)}
+          onApplied={async () => {
+            const c = await coursesApi.get(id); setCourse(c); setStudents(String(c.confirmedStudents ?? 0));
+            await loadStaffing();
+          }}
+        />
+      )}
     </>
   );
 }

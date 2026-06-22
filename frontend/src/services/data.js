@@ -85,6 +85,12 @@ export const reportApi = {
   get() { return api.get(`/organisations/${orgId()}/ops-report`); },
 };
 
+// AI course actions — propose fixes (plan), then apply the confirmed ones.
+export const courseActionsApi = {
+  plan(courseId) { return api.get(`/courses/${courseId}/ai-plan`); },
+  apply(courseId, actionIds) { return api.post(`/courses/${courseId}/ai-apply`, { actionIds }); },
+};
+
 export const orgApi = {
   get() { return api.get(`/organisations/${orgId()}/profile`); },
   update(payload) { return api.put(`/organisations/${orgId()}/profile`, payload); },

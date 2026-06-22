@@ -6,6 +6,7 @@ import { Card, Button, Badge, Spinner, Icon, cx } from '@/components/ui/kit';
 import { reportApi, fmtDate } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 import { reportStore } from '@/stores/reportStore';
+import AiFixPanel from '@/components/ops/AiFixPanel';
 
 const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-AU');
 
@@ -80,6 +81,7 @@ export default function OpsReport() {
   const [showAll, setShowAll] = useState(false);
   const [showBriefing, setShowBriefing] = useState(false);
   const [win, setWin] = useState('all');
+  const [fix, setFix] = useState(null);
 
   async function run() {
     setBusy(true);
@@ -113,6 +115,7 @@ export default function OpsReport() {
   const ai = data?.source === 'ai';
 
   return (
+    <>
     <Card>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
@@ -204,9 +207,14 @@ export default function OpsReport() {
                               <Icon d="M13 7l5 5-5 5M6 12h12" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" /> {f.action}
                             </p>
                           </div>
-                          <span className="mt-0.5 shrink-0 text-[var(--ink-3)] transition-colors group-hover:text-[var(--accent)]">
-                            <Icon d="M9 6l6 6-6 6" className="h-4 w-4" />
-                          </span>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <button
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setFix({ id: f.courseId, name: f.course }); }}
+                              className="rounded-lg border border-[var(--line)] px-2 py-1 text-xs font-medium text-[var(--accent-ink)] hover:border-[color:var(--accent)]/40">
+                              Fix
+                            </button>
+                            <span className="text-[var(--ink-3)] transition-colors group-hover:text-[var(--accent)]"><Icon d="M9 6l6 6-6 6" className="h-4 w-4" /></span>
+                          </div>
                         </div>
                       </Link>
                     );
@@ -247,5 +255,9 @@ export default function OpsReport() {
         </div>
       )}
     </Card>
+    {fix && (
+      <AiFixPanel courseId={fix.id} courseName={fix.name} onClose={() => setFix(null)} onApplied={() => run()} />
+    )}
+    </>
   );
 }
