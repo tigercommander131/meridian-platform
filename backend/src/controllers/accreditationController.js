@@ -113,19 +113,31 @@ export async function createRuleSet(req, res, next) {
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
       [courseTypeId, v.rows[0].next, effectiveFrom || new Date().toISOString(), JSON.stringify(rules), req.user.sub]
     );
+    clearRulesCache();
     res.status(201).json(ruleSetDTO(r.rows[0]));
   } catch (err) { next(err); }
 }
 
 // Resolve the rules in force for a course type now (latest effective version).
 // Returns {} when none configured — the staffing engine applies its defaults.
+// Short-lived cache: the ops dashboard resolves rules once per course, so a
+// 500/2000-course org would otherwise fire one query per course. Rules rarely
+// change; cleared on rule-set writes (see clearRulesCache).
+const _rulesCache = new Map(); // courseTypeId -> { rules, at }
+const RULES_TTL = 30_000;
+export function clearRulesCache() { _rulesCache.clear(); }
+
 export async function resolveCurrentRules(courseTypeId) {
   if (!courseTypeId) return {};
+  const hit = _rulesCache.get(courseTypeId);
+  if (hit && Date.now() - hit.at < RULES_TTL) return hit.rules;
   const r = await query(
     `SELECT rules FROM rule_sets
      WHERE course_type_id = $1 AND effective_from <= NOW()
      ORDER BY effective_from DESC, version DESC LIMIT 1`,
     [courseTypeId]
   );
-  return r.rows[0]?.rules || {};
+  const rules = r.rows[0]?.rules || {};
+  _rulesCache.set(courseTypeId, { rules, at: Date.now() });
+  return rules;
 }

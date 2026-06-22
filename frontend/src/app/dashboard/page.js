@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import { Skeleton, Icon, Button } from '@/components/ui/kit';
 import { FlightStatus, Lamp } from '@/components/ui/aviation';
 import OpsReport from '@/components/ops/OpsReport';
 import CourseFilters from '@/components/ui/CourseFilters';
+import ColumnPicker from '@/components/ui/ColumnPicker';
+import AdaptableCourseTable from '@/components/ops/AdaptableCourseTable';
 import { useAuth } from '@/hooks/useAuth';
-import { dashboardApi, fmtDate, fmtDateRange, flight, station, filterCourses, emptyCourseFilter } from '@/services/data';
+import { dashboardApi, fmtDate, fmtDateRange, flight, station, filterCourses, emptyCourseFilter,
+  inferFields, DEFAULT_BOARD_COLS, loadCols, saveCols } from '@/services/data';
 
 function useClock() {
   const [t, setT] = useState(null);
@@ -76,11 +79,22 @@ function DashboardContent() {
   const [courses, setCourses] = useState(null);
   const [limit, setLimit] = useState(12);
   const [filter, setFilter] = useState(emptyCourseFilter());
+  const [cols, setCols] = useState(null);
   const clock = useClock();
 
   useEffect(() => { dashboardApi.get().then((r) => setCourses(r.courses)).catch(() => setCourses([])); }, []);
 
   const list = courses || [];
+  const hasAttrs = list.some((c) => c.attributes && Object.keys(c.attributes).length > 0);
+  const fields = useMemo(() => (hasAttrs ? inferFields(list) : []), [hasAttrs, courses]);
+  const colKey = `ctop:boardcols:${user.organisationId}`;
+  useEffect(() => {
+    if (!hasAttrs || cols !== null) return;
+    const present = new Set(fields.map((f) => f.key));
+    const def = DEFAULT_BOARD_COLS.filter((k) => present.has(k));
+    setCols(loadCols(colKey, def.length ? def : fields.slice(0, 6).map((f) => f.key)));
+  }, [hasAttrs, fields, cols, colKey]);
+  const setColsPersist = (next) => { setCols(next); saveCols(colKey, next); };
   const cleared = list.filter((c) => c.compliance.status === 'ready').length;
   const atRisk = list.filter((c) => ['compliance_risk', 'staffing_risk', 'viability_risk'].includes(c.compliance.status)).length;
   const gaps = list.reduce((n, c) => n + (c.crew ? Math.max(0, c.crew.required - c.crew.assigned) : 0), 0);
@@ -118,10 +132,13 @@ function DashboardContent() {
             <span className="font-mono text-sm font-bold tracking-widest text-board-ink">COURSES</span>
             {courses && <span className="font-mono text-[11px] text-[var(--board-ink-2)]">{list.length}</span>}
           </div>
-          <div className="hidden items-center gap-3 font-mono text-[10px] text-[var(--board-ink-2)] sm:flex">
-            <span className="flex items-center gap-1"><Lamp kind="go" /> CLEARED</span>
-            <span className="flex items-center gap-1"><Lamp kind="warn" /> WATCH</span>
-            <span className="flex items-center gap-1"><Lamp kind="stop" /> AT RISK</span>
+          <div className="flex items-center gap-3">
+            {hasAttrs && cols && <ColumnPicker fields={fields} value={cols} onChange={setColsPersist} variant="board" max={10} />}
+            <div className="hidden items-center gap-3 font-mono text-[10px] text-[var(--board-ink-2)] sm:flex">
+              <span className="flex items-center gap-1"><Lamp kind="go" /> CLEARED</span>
+              <span className="flex items-center gap-1"><Lamp kind="warn" /> WATCH</span>
+              <span className="flex items-center gap-1"><Lamp kind="stop" /> AT RISK</span>
+            </div>
           </div>
         </div>
 
@@ -129,9 +146,11 @@ function DashboardContent() {
           <CourseFilters courses={list} value={filter} onChange={(v) => { setFilter(v); setLimit(12); }} acc={BOARD_ACC} variant="board" count={filtered.length} total={list.length} />
         )}
 
-        <div className={`hidden ${GRID} gap-3 border-b border-[var(--board-line)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--board-ink-2)] sm:grid`}>
-          <span>Course</span><span>Location</span><span>Date</span><span>Instructors</span><span>Students</span><span>Waitlist</span><span>Status</span>
-        </div>
+        {!hasAttrs && (
+          <div className={`hidden ${GRID} gap-3 border-b border-[var(--board-line)] px-4 py-2 font-mono text-[10px] uppercase tracking-wider text-[var(--board-ink-2)] sm:grid`}>
+            <span>Course</span><span>Location</span><span>Date</span><span>Instructors</span><span>Students</span><span>Waitlist</span><span>Status</span>
+          </div>
+        )}
 
         {courses === null ? (
           <div className="space-y-px p-4">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full bg-white/5" />)}</div>
@@ -139,6 +158,8 @@ function DashboardContent() {
           <p className="px-4 py-10 text-center font-mono text-sm text-[var(--board-ink-2)]">NO COURSES — create one to begin.</p>
         ) : filtered.length === 0 ? (
           <p className="px-4 py-10 text-center font-mono text-sm text-[var(--board-ink-2)]">NO MATCH — adjust the filters.</p>
+        ) : hasAttrs ? (
+          cols && <AdaptableCourseTable courses={shown} fields={fields} cols={cols} />
         ) : (
           shown.map((c) => <CourseRow key={c.id} c={c} />)
         )}

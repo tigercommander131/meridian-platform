@@ -181,6 +181,71 @@ export function fmtDateRange(start, end) {
   return `${fmtDate(start, { day: 'numeric', month: 'short' })} – ${fmtDate(end)}`;
 }
 
+// Adaptable columns — infer a field registry from imported course `attributes`
+// so the board/cards can show any variable in the dataset (date, revenue, risk…).
+const CURRENCY_HINT = /revenue|margin|liabilit|cost|price|\bfee/i;
+
+export function inferFieldType(key, values) {
+  const sample = (values || []).filter((v) => v != null && v !== '').slice(0, 50);
+  if (sample.length === 0) return 'text';
+  if (sample.every((v) => v === 'Yes' || v === 'No' || typeof v === 'boolean')) return 'bool';
+  if (sample.every((v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v))) return 'date';
+  if (sample.every((v) => typeof v === 'number')) return CURRENCY_HINT.test(key) ? 'currency' : 'number';
+  return 'text';
+}
+
+// Union of attribute keys across the courses → [{ key, label, type }].
+export function inferFields(courses) {
+  const vals = new Map();
+  for (const c of courses || []) {
+    const a = c.attributes || {};
+    for (const k of Object.keys(a)) {
+      if (!vals.has(k)) vals.set(k, []);
+      const arr = vals.get(k);
+      if (arr.length < 60) arr.push(a[k]);
+    }
+  }
+  return [...vals.entries()].map(([key, v]) => ({ key, label: key, type: inferFieldType(key, v) }));
+}
+
+export function formatAttr(v, type) {
+  if (v == null || v === '') return '—';
+  switch (type) {
+    case 'currency': return '$' + Number(v).toLocaleString('en-AU');
+    case 'number': return Number(v).toLocaleString('en-AU');
+    case 'date': return fmtDate(v);
+    case 'bool': return v === true ? 'Yes' : v === false ? 'No' : String(v);
+    default: return String(v);
+  }
+}
+
+// Optional cell tone for risk / conflict fields (returns 'rose' | 'amber' | 'teal' | null).
+export function attrTone(key, v) {
+  const s = String(v);
+  if (/risk|status|rating/i.test(key)) {
+    if (/critical/i.test(s)) return 'rose';
+    if (/high|intervention|at risk/i.test(s)) return 'rose';
+    if (/moderate|low|recruit|add capacity|merge/i.test(s)) return 'amber';
+    if (/healthy|ready/i.test(s)) return 'teal';
+  }
+  if (s === 'Yes' && /conflict|double|exceeded|expired|shortage|missing|outstanding/i.test(key)) return 'rose';
+  return null;
+}
+
+// Sensible default board columns (only those present are used).
+export const DEFAULT_BOARD_COLS = ['Centre', 'Start Date', 'Enrolled', 'Capacity', 'Instructors Assigned', 'Waitlist', 'Risk Rating'];
+
+// localStorage-backed column selection (per org + surface).
+export function loadCols(storageKey, fallback) {
+  if (typeof window === 'undefined') return fallback;
+  try { const v = JSON.parse(localStorage.getItem(storageKey)); return Array.isArray(v) ? v : fallback; }
+  catch { return fallback; }
+}
+export function saveCols(storageKey, cols) {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(storageKey, JSON.stringify(cols)); } catch {}
+}
+
 // Course filtering (shared by the Courses page + the dashboard board).
 export const COURSE_WINDOWS = [
   { key: 'all', label: 'Any time', days: null },

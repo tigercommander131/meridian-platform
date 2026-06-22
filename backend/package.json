@@ -10,6 +10,7 @@
     "migrate:status": "node src/migrations/run.js status",
     "seed:ctop": "node src/seeders/ctop-seed.js",
     "seed:resus": "node src/seeders/resus-seed.js",
+    "seed:lms": "node src/seeders/lms-seed.js",
     "test": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {

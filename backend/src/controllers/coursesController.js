@@ -31,6 +31,7 @@ function toDTO(row) {
     medicalDirectorAssigned: row.medical_director_assigned,
     cdQualified: row.cd_qualified,
     mdDoctor: row.md_doctor,
+    attributes: row.attributes || {},
     createdAt: row.created_at,
   };
 }

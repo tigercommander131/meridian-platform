@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import PageHeader from '@/components/ui/PageHeader';
 import EmptyState from '@/components/ui/EmptyState';
 import StatusBadge from '@/components/ui/StatusBadge';
 import CourseFilters from '@/components/ui/CourseFilters';
+import ColumnPicker from '@/components/ui/ColumnPicker';
 import { Card, CardHeader, Button, Field, Input, Select, Skeleton, Icon } from '@/components/ui/kit';
-import { coursesApi, accreditationApi, fmtDate, filterCourses, emptyCourseFilter } from '@/services/data';
+import { useAuth } from '@/hooks/useAuth';
+import { coursesApi, accreditationApi, fmtDate, filterCourses, emptyCourseFilter,
+  inferFields, formatAttr, loadCols, saveCols } from '@/services/data';
 import { toast } from '@/stores/toastStore';
 
 function CreateCourse({ accreditation, onCreated, onCancel }) {
@@ -77,8 +80,9 @@ function CreateCourse({ accreditation, onCreated, onCancel }) {
   );
 }
 
-function CourseCard({ c }) {
+function CourseCard({ c, cardFields = [] }) {
   const fill = c.capacity ? Math.min(100, Math.round((c.confirmedStudents / c.capacity) * 100)) : 0;
+  const a = c.attributes || {};
   return (
     <Link href={`/courses/${c.id}`}
       className="group rounded-2xl border border-[var(--line)] bg-white p-5 shadow-card transition-all hover:border-[color:var(--accent)]/40 hover:shadow-soft">
@@ -98,6 +102,15 @@ function CourseCard({ c }) {
           </div>
         ) : null}
       </div>
+      {cardFields.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--line)] pt-3">
+          {cardFields.map((f) => (
+            <span key={f.key} className="rounded-md bg-[var(--surface-2)] px-2 py-0.5 text-[11px] text-[var(--ink-2)]">
+              <span className="text-[var(--ink-3)]">{f.label}:</span> {formatAttr(a[f.key], f.type)}
+            </span>
+          ))}
+        </div>
+      )}
     </Link>
   );
 }
@@ -110,11 +123,15 @@ const COURSE_ACC = {
   search: (c) => `${c.name} ${c.region || ''} ${c.externalRef || ''} ${c.courseTypeName || ''}`,
 };
 
+const CARD_DEFAULT_COLS = ['Risk Rating', 'Day of Week', 'Expected Revenue', 'Primary Issue'];
+
 function CoursesContent() {
+  const { user } = useAuth();
   const [courses, setCourses] = useState(null);
   const [accreditation, setAccreditation] = useState([]);
   const [showCreate, setShowCreate] = useState(false);
   const [filter, setFilter] = useState(emptyCourseFilter());
+  const [cols, setCols] = useState(null);
 
   const load = useCallback(async () => {
     const r = await coursesApi.list();
@@ -127,6 +144,18 @@ function CoursesContent() {
   }, [load]);
 
   const filtered = courses ? filterCourses(courses, filter, COURSE_ACC) : [];
+  const hasAttrs = (courses || []).some((c) => c.attributes && Object.keys(c.attributes).length > 0);
+  const fields = useMemo(() => (hasAttrs ? inferFields(courses) : []), [hasAttrs, courses]);
+  const colKey = `ctop:cardcols:${user?.organisationId}`;
+  useEffect(() => {
+    if (!hasAttrs || cols !== null) return;
+    const present = new Set(fields.map((f) => f.key));
+    const def = CARD_DEFAULT_COLS.filter((k) => present.has(k));
+    setCols(loadCols(colKey, def.length ? def : fields.slice(0, 4).map((f) => f.key)));
+  }, [hasAttrs, fields, cols, colKey]);
+  const setColsPersist = (next) => { setCols(next); saveCols(colKey, next); };
+  const byKey = Object.fromEntries(fields.map((f) => [f.key, f]));
+  const cardFields = (cols || []).map((k) => byKey[k]).filter(Boolean);
 
   return (
     <>
@@ -152,12 +181,15 @@ function CoursesContent() {
           />
         ) : (
           <>
-            <CourseFilters courses={courses} value={filter} onChange={setFilter} acc={COURSE_ACC} count={filtered.length} total={courses.length} />
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="grow"><CourseFilters courses={courses} value={filter} onChange={setFilter} acc={COURSE_ACC} count={filtered.length} total={courses.length} /></div>
+              {hasAttrs && cols && <ColumnPicker fields={fields} value={cols} onChange={setColsPersist} variant="light" max={6} />}
+            </div>
             {filtered.length === 0 ? (
               <p className="mt-6 rounded-2xl border border-[var(--line)] bg-white p-8 text-center text-sm text-[var(--ink-3)]">No courses match these filters.</p>
             ) : (
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {filtered.map((c) => <CourseCard key={c.id} c={c} />)}
+                {filtered.map((c) => <CourseCard key={c.id} c={c} cardFields={cardFields} />)}
               </div>
             )}
           </>

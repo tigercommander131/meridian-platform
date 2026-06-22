@@ -46,10 +46,19 @@ export async function staffingFor(courseId) {
 // Compliance for a course: resolve rules, run the engine.
 // Imported courses store staffing as counts/flags (the operations spreadsheet);
 // native courses derive it from named, non-declined staffing assignments.
+// Map an external LMS "Operational Status" to a CTOP compliance status.
+const SHEET_STATUS = {
+  'Ready to Run': 'ready',
+  'At Risk': 'staffing_risk',
+  'Critical Intervention': 'compliance_risk',
+  'Recruit Students / Consider Merge': 'viability_risk',
+  'Add Capacity / Open Extra Course': 'viability_risk',
+};
+
 export async function complianceFor(course) {
   const rules = await resolveCurrentRules(course.course_type_id);
   if (course.imported) {
-    return evaluate({
+    const result = evaluate({
       ruleSet: rules,
       groups: course.groups,
       enrolled: course.confirmed_students,
@@ -57,6 +66,15 @@ export async function complianceFor(course) {
       courseDirector: Boolean(course.course_director_assigned) && course.cd_qualified !== false,
       medicalDirector: Boolean(course.medical_director_assigned) && course.md_doctor !== false,
     });
+    // If the import carried its own verdict (e.g. the LMS dataset factors in
+    // venue/equipment/double-booking the engine doesn't model), trust it.
+    const attr = course.attributes || {};
+    const sheetStatus = SHEET_STATUS[attr['Operational Status']];
+    if (sheetStatus) {
+      result.status = sheetStatus;
+      if (attr['Can Run'] != null) result.canRun = attr['Can Run'] === 'Yes';
+    }
+    return result;
   }
   const assigned = await query(
     `SELECT role FROM course_staffing WHERE course_id = $1 AND invitation_status <> 'declined'`,
@@ -243,6 +261,7 @@ export async function opsDashboard(req, res, next) {
         waitlistCount: c.waitlist_count,
         groups: compliance.groups,
         status: c.status,
+        attributes: c.attributes || {},
         crew: { assigned: assignedTotal, required: requiredTotal, groups: compliance.groups, instructors: compliance.assigned.instructors, instructorsRequired: compliance.required.instructors },
         compliance: { status: compliance.status, missing: compliance.missing, explanation: compliance.explanation },
       });
