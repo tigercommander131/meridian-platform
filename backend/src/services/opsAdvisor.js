@@ -99,6 +99,11 @@ export function analyze(courses, { groupSize = 6, maxGroups = 3 } = {}) {
     waitlistAlerts: findings.filter((f) => f.type === 'waitlist').length,
     staffingGaps: findings.filter((f) => ['instructors', 'course_director', 'medical_director'].includes(f.type)).length,
     totalWaitlisted: future.reduce((n, c) => n + (c.waitlist || 0), 0),
+    // Financial exposure (present when the dataset carries revenue figures).
+    expectedRevenue: future.reduce((n, c) => n + (Number(c.expectedRevenue) || 0), 0),
+    revenueAtRisk: future.reduce((n, c) => n + (Number(c.revenueAtRisk) || 0), 0),
+    refundLiability: future.reduce((n, c) => n + (Number(c.refundLiability) || 0), 0),
+    netMargin: future.reduce((n, c) => n + (Number(c.netMargin) || 0), 0),
   };
 
   return { stats, findings };
@@ -111,6 +116,7 @@ export function summaryText({ stats, findings }, orgName = 'your organisation') 
   }
   const lines = [];
   lines.push(`${stats.atRisk} of ${stats.total} active courses need attention: ${stats.staffingGaps} staffing gap(s), ${stats.underfilled} under-minimum, ${stats.waitlistAlerts} waitlist pressure(s).`);
+  if (stats.revenueAtRisk) lines.push(`Financial exposure: $${Math.round(stats.revenueAtRisk).toLocaleString()} revenue at risk, $${Math.round(stats.refundLiability).toLocaleString()} refund liability.`);
   const top = findings.slice(0, 8);
   for (const f of top) lines.push(`- [${f.severity.toUpperCase()}] ${f.course}: ${f.title}. ${f.action}`);
   if (findings.length > top.length) lines.push(`…and ${findings.length - top.length} more.`);

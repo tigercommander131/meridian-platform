@@ -83,6 +83,81 @@ async function seed() {
     console.log(`   inserted ${done}/${rows.length}`);
   }
 
+  // ---- Instructors (named) + credentials -------------------------------------
+  const instructors = JSON.parse(fs.readFileSync(path.join(__dirname, 'lms-instructors.json'), 'utf8'));
+  const insId = (ref) => 'lmsins_' + String(ref).replace(/-/g, '_');
+  const insRefs = new Set(instructors.map((i) => i.ref));
+  const insRows = instructors.map((i) => [
+    insId(i.ref), ORG, i.first, i.last || '·',
+    `${i.first}.${i.last || i.ref}.${i.ref}`.toLowerCase().replace(/[^a-z0-9.]/g, '') + '@lms.example',
+    i.centre, i.employment || null, i.qualified ? 'active' : 'candidate',
+  ]);
+  for (let i = 0; i < insRows.length; i += 200) {
+    await query(pgformat(
+      `INSERT INTO instructors (id, organisation_id, first_name, last_name, email, region, employment_type, status)
+       VALUES %L ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, region = EXCLUDED.region`,
+      insRows.slice(i, i + 200)));
+  }
+  const credRows = instructors.map((i) => {
+    const roles = ['instructor'];
+    if (i.cd) roles.push('course_director');
+    if (i.md || i.profession === 'Doctor') { roles.push('medical_lead'); roles.push('doctor'); }
+    return ['lmscred_' + String(i.ref).replace(/-/g, '_'), insId(i.ref), ACCRED, [T_ALS1, T_ALS2], roles, i.expiry || null];
+  });
+  for (let i = 0; i < credRows.length; i += 200) {
+    await query(pgformat(
+      `INSERT INTO instructor_credentials (id, instructor_id, accreditation_org_id, eligible_course_type_ids, eligible_roles, expires_at)
+       VALUES %L ON CONFLICT (id) DO UPDATE SET eligible_roles = EXCLUDED.eligible_roles, expires_at = EXCLUDED.expires_at`,
+      credRows.slice(i, i + 200)));
+  }
+  console.log(`   ${insRows.length} instructors + credentials`);
+
+  // ---- Allocations (named crew per course) -----------------------------------
+  const allocs = JSON.parse(fs.readFileSync(path.join(__dirname, 'lms-allocations.json'), 'utf8'));
+  const courseId = (ref) => 'lms_' + String(ref).replace(/-/g, '_');
+  const seenAlloc = new Set();
+  const allocRows = [];
+  for (const a of allocs) {
+    if (!insRefs.has(a.ins)) continue;
+    const key = `${a.course}|${a.ins}|${a.role}`;
+    if (seenAlloc.has(key)) continue;
+    seenAlloc.add(key);
+    allocRows.push([courseId(a.course), insId(a.ins), a.role, a.status]);
+  }
+  for (let i = 0; i < allocRows.length; i += 200) {
+    await query(pgformat(
+      `INSERT INTO course_staffing (course_id, instructor_id, role, invitation_status)
+       VALUES %L ON CONFLICT (course_id, instructor_id, role) DO UPDATE SET invitation_status = EXCLUDED.invitation_status`,
+      allocRows.slice(i, i + 200)));
+  }
+  console.log(`   ${allocRows.length} allocations`);
+
+  // ---- Students (synthesized from each course's enrolment count) --------------
+  const FIRST = ['Olivia', 'Liam', 'Charlotte', 'Noah', 'Amelia', 'Jack', 'Mia', 'William', 'Ava', 'Lucas', 'Grace', 'Ethan', 'Chloe', 'Henry', 'Zoe', 'Leo', 'Ruby', 'Max', 'Ella', 'Sam'];
+  const LAST = ['Nguyen', 'Smith', 'Patel', 'Williams', 'Chen', 'Brown', 'Singh', 'Jones', 'Wang', 'Taylor', 'Kaur', 'Wilson', 'Lee', 'Martin', 'Khan', 'White', 'Ali', 'Walker', 'Reddy', 'Hall'];
+  let sc = 0;
+  const learnerRows = []; const linkRows = [];
+  for (const c of data) {
+    const n = Math.max(0, c.enrolled || 0);
+    for (let k = 0; k < n; k++) {
+      const id = 'lmsstu_' + sc;
+      learnerRows.push([id, ORG, FIRST[sc % FIRST.length], LAST[(sc * 7) % LAST.length], `stu${sc}@lms.example`, `${c.ref}-${k}`]);
+      linkRows.push([courseId(c.ref), id]);
+      sc++;
+    }
+  }
+  for (let i = 0; i < learnerRows.length; i += 500) {
+    await query(pgformat(
+      `INSERT INTO learners (id, organisation_id, first_name, last_name, email, external_id)
+       VALUES %L ON CONFLICT (id) DO NOTHING`, learnerRows.slice(i, i + 500)));
+  }
+  for (let i = 0; i < linkRows.length; i += 500) {
+    await query(pgformat(
+      `INSERT INTO course_learners (course_id, learner_id) VALUES %L ON CONFLICT DO NOTHING`,
+      linkRows.slice(i, i + 500)));
+  }
+  console.log(`   ${learnerRows.length} students linked to courses`);
+
   const byStatus = {};
   for (const r of rows) { byStatus[r[9]] = (byStatus[r[9]] || 0) + 1; }
   console.log('✅ LMS import complete — org "lms", login admin@lms.example / password');

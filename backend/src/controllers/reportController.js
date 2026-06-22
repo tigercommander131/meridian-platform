@@ -41,6 +41,10 @@ export async function opsReport(req, res, next) {
         cdOk: comp.required.course_director ? comp.assigned.course_director >= comp.required.course_director : true,
         mdOk: comp.required.medical_lead ? comp.assigned.medical_lead >= comp.required.medical_lead : true,
         als2: comp.required.medical_lead > 0,
+        expectedRevenue: Number(c.attributes?.['Expected Revenue']) || 0,
+        revenueAtRisk: Number(c.attributes?.['Revenue at Risk']) || 0,
+        refundLiability: Number(c.attributes?.['Refund Liability']) || 0,
+        netMargin: Number(c.attributes?.['Estimated Net Margin']) || 0,
       });
     }
 

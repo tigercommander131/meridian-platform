@@ -1,9 +1,13 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Card, Button, Badge, Spinner, Icon, cx } from '@/components/ui/kit';
 import { reportApi, fmtDate } from '@/services/data';
 import { toast } from '@/stores/toastStore';
+import { reportStore } from '@/stores/reportStore';
+
+const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-AU');
 
 const SEV = {
   high: { tone: 'rose', label: 'High', chip: 'bg-rose-50 text-rose-600' },
@@ -71,7 +75,7 @@ function Stat({ label, value, tone }) {
 }
 
 export default function OpsReport() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(() => reportStore.get());
   const [busy, setBusy] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const [showBriefing, setShowBriefing] = useState(false);
@@ -79,7 +83,7 @@ export default function OpsReport() {
 
   async function run() {
     setBusy(true);
-    try { setData(await reportApi.get()); setShowAll(false); }
+    try { const r = await reportApi.get(); setData(r); reportStore.set(r); setShowAll(false); }
     catch (e) { toast.error(e.message); } finally { setBusy(false); }
   }
 
@@ -158,6 +162,15 @@ export default function OpsReport() {
             <Stat label="Staffing gaps" value={stats.staffingGaps} tone={stats.staffingGaps ? 'rose' : undefined} />
           </div>
 
+          {data.stats.revenueAtRisk > 0 && (
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <Stat label="Revenue at risk" value={money(data.stats.revenueAtRisk)} tone="rose" />
+              <Stat label="Refund liability" value={money(data.stats.refundLiability)} tone="amber" />
+              <Stat label="Expected revenue" value={money(data.stats.expectedRevenue)} />
+              <Stat label="Net margin" value={money(data.stats.netMargin)} />
+            </div>
+          )}
+
           {/* Suggested solutions — shown first */}
           <div className="mt-4">
             <div className="mb-2 flex items-center justify-between">
@@ -174,7 +187,8 @@ export default function OpsReport() {
                   {shown.map((f, i) => {
                     const s = sev(f.severity);
                     return (
-                      <div key={i} className="rounded-xl border border-[var(--line)] p-3">
+                      <Link key={i} href={`/courses/${f.courseId}`}
+                        className="group block rounded-xl border border-[var(--line)] p-3 transition-all hover:border-[color:var(--accent)]/40 hover:shadow-soft">
                         <div className="flex items-start gap-3">
                           <span className={cx('mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', s.chip)}>
                             <Icon d={typeIcon(f.type)} className="h-[18px] w-[18px]" />
@@ -190,8 +204,11 @@ export default function OpsReport() {
                               <Icon d="M13 7l5 5-5 5M6 12h12" className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" /> {f.action}
                             </p>
                           </div>
+                          <span className="mt-0.5 shrink-0 text-[var(--ink-3)] transition-colors group-hover:text-[var(--accent)]">
+                            <Icon d="M9 6l6 6-6 6" className="h-4 w-4" />
+                          </span>
                         </div>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>

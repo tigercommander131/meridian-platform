@@ -23,6 +23,7 @@ Rules:
 - Open with a 2-3 sentence executive summary of the overall state (counts + the single most urgent theme).
 - Then group the issues into at most 4 themes, each a "## " heading followed by 1-2 lines. Do NOT prefix headings with category labels like "COMPLIANCE", "STAFFING", or "VIABILITY" — use plain descriptive titles (e.g. "## Course Director gaps").
 - Within a theme, summarise (e.g. "9 ALS2 courses have no Course Director — Sydney ×3, Brisbane, Geelong…"). Do not list every course one by one; the coordinator sees the full itemised list elsewhere.
+- If the stats include revenueAtRisk / refundLiability, open by stating the total financial exposure (e.g. "$1.2M revenue at risk") and weight priorities toward the highest-dollar problems.
 - Be specific and quantitative; reference real numbers. Keep the whole briefing under ~200 words.
 - Plain markdown. No preamble, no sign-off, no headings deeper than "##". Respond with the report only.`;
 
